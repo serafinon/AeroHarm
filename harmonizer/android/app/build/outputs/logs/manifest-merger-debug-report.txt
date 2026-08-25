@@ -1,0 +1,111 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:2:1-45:12
+INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:2:1-45:12
+INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:2:1-45:12
+INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:2:1-45:12
+	package
+		INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml
+	android:versionName
+		INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml
+	android:versionCode
+		INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:2:11-69
+uses-feature#android.software.midi
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:6:5-83
+	android:required
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:6:56-80
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:6:19-55
+uses-feature#android.hardware.usb.host
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:7:5-87
+	android:required
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:7:60-84
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:7:19-59
+uses-permission#android.permission.FOREGROUND_SERVICE
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:9:5-77
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:9:22-74
+uses-permission#android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:10:5-92
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:10:22-89
+uses-permission#android.permission.WAKE_LOCK
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:11:5-68
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:11:22-65
+uses-permission#android.permission.POST_NOTIFICATIONS
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:12:5-77
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:12:22-74
+uses-permission#android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:13:5-95
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:13:22-92
+application
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:15:5-44:19
+INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:15:5-44:19
+	android:extractNativeLibs
+		INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml
+	android:label
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:16:9-41
+	android:hardwareAccelerated
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:20:9-43
+	android:roundIcon
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:18:9-48
+	android:icon
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:17:9-43
+	android:theme
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:19:9-66
+activity#harmonizer.app.MainActivity
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:22:9-38:20
+	android:screenOrientation
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:25:13-55
+	android:exported
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:24:13-36
+	android:keepScreenOn
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:27:13-40
+	android:configChanges
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:26:13-113
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:23:13-55
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:28:13-31:29
+action#android.intent.action.MAIN
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:29:17-69
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:29:25-66
+category#android.intent.category.LAUNCHER
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:30:17-77
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:30:27-74
+intent-filter#action:name:android.hardware.usb.action.USB_DEVICE_ATTACHED
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:32:13-34:29
+action#android.hardware.usb.action.USB_DEVICE_ATTACHED
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:33:17-90
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:33:25-87
+meta-data#android.hardware.usb.action.USB_DEVICE_ATTACHED
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:35:13-37:52
+	android:resource
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:37:17-49
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:36:17-79
+service#harmonizer.app.HarmService
+ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:40:9-43:61
+	android:exported
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:42:13-37
+	android:foregroundServiceType
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:43:13-58
+	android:name
+		ADDED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml:41:13-54
+uses-sdk
+INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml
+INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/AndroidManifest.xml

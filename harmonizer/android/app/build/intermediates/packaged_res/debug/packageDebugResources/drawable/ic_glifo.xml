@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Corona di dodici tacche, il circolo delle quinte, con dentro le tre voci
+     sovrapposte: lo stesso segno del pulsante ARMONIA. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+
+    <path android:strokeColor="#3A8482" android:strokeWidth="3.4"
+        android:strokeLineCap="round"
+        android:pathData="M54.00,32.00 L54.00,25.50 M65.00,34.95 L68.25,29.32 M73.05,43.00 L78.68,39.75 M76.00,54.00 L82.50,54.00 M73.05,65.00 L78.68,68.25 M65.00,73.05 L68.25,78.68 M54.00,76.00 L54.00,82.50 M43.00,73.05 L39.75,78.68 M34.95,65.00 L29.32,68.25 M32.00,54.00 L25.50,54.00 M34.95,43.00 L29.32,39.75 M43.00,34.95 L39.75,29.32" />
+
+    <path android:strokeColor="#6AC7C4" android:strokeWidth="6.4"
+        android:strokeLineCap="round"
+        android:pathData="M40,45 L68,45" />
+    <path android:strokeColor="#6AC7C4" android:strokeWidth="6.4"
+        android:strokeLineCap="round"
+        android:pathData="M44,54 L64,54" />
+    <path android:strokeColor="#6AC7C4" android:strokeWidth="6.4"
+        android:strokeLineCap="round"
+        android:pathData="M48,63 L60,63" />
+</vector>

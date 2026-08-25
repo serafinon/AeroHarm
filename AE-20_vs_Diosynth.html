@@ -1,0 +1,1144 @@
+<title>AE-20 vs Diosynth</title>
+<style>
+  :root {
+    --ground: #ECEEEA;
+    --surface: #F8F9F6;
+    --surface-2: #E1E5DF;
+    --ink: #15191A;
+    --ink-2: #4C5552;
+    --ink-3: #79837F;
+    --rule: #D1D7CF;
+    --rule-soft: #E2E6E0;
+    --brass: #97591A;
+    --brass-tint: #F1E5D3;
+    --teal: #17656B;
+    --teal-tint: #D8E7E6;
+    --shadow: 0 1px 2px rgba(21,25,26,.05), 0 8px 24px -18px rgba(21,25,26,.35);
+
+    --display: "Iowan Old Style", "Charter", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --body: "Avenir Next", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101413;
+      --surface: #181D1C;
+      --surface-2: #212726;
+      --ink: #E9EDE9;
+      --ink-2: #A3ADA9;
+      --ink-3: #7C8683;
+      --rule: #2A312F;
+      --rule-soft: #232928;
+      --brass: #DEA359;
+      --brass-tint: #2E2318;
+      --teal: #6AC7C4;
+      --teal-tint: #14302F;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -20px rgba(0,0,0,.9);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #101413;
+    --surface: #181D1C;
+    --surface-2: #212726;
+    --ink: #E9EDE9;
+    --ink-2: #A3ADA9;
+    --ink-3: #7C8683;
+    --rule: #2A312F;
+    --rule-soft: #232928;
+    --brass: #DEA359;
+    --brass-tint: #2E2318;
+    --teal: #6AC7C4;
+    --teal-tint: #14302F;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -20px rgba(0,0,0,.9);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+  }
+
+  .prose { max-width: 68ch; }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 64px 0 40px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(2.6rem, 7vw, 4.4rem);
+    line-height: 1.02;
+    letter-spacing: -.015em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h1 .versus {
+    font-style: italic;
+    color: var(--ink-3);
+    font-size: .5em;
+    vertical-align: .25em;
+    padding: 0 .18em;
+  }
+  h1 .a { color: var(--brass); }
+  h1 .b { color: var(--teal); }
+  .standfirst {
+    font-family: var(--display);
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 60ch;
+    margin: 0;
+  }
+
+  /* ---------- toc ---------- */
+
+  nav.toc {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 28px;
+    padding: 26px 0 0;
+  }
+  nav.toc a {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 5px 0;
+    border-bottom: 1px solid transparent;
+    display: block;
+  }
+  nav.toc a:hover, nav.toc a:focus-visible { color: var(--ink); border-bottom-color: var(--rule); }
+
+  /* ---------- sections ---------- */
+
+  section { padding-top: 60px; }
+  h2 {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(1.65rem, 3.4vw, 2.2rem);
+    line-height: 1.15;
+    letter-spacing: -.01em;
+    margin: 0 0 4px;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: .82rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 40px 0 12px;
+  }
+  p { margin: 0 0 14px; }
+  .lede { color: var(--ink-2); }
+  strong { font-weight: 600; }
+  code, .m {
+    font-family: var(--mono);
+    font-size: .86em;
+    background: var(--surface-2);
+    padding: .1em .38em;
+    border-radius: 3px;
+  }
+  .path {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    letter-spacing: .02em;
+    display: block;
+    margin-top: 3px;
+  }
+
+  /* ---------- verdict cards ---------- */
+
+  .verdict {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 26px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--ink-3);
+    border-radius: 2px;
+    padding: 22px 24px 26px;
+    box-shadow: var(--shadow);
+  }
+  .card.a { border-top-color: var(--brass); }
+  .card.b { border-top-color: var(--teal); }
+  .card h4 {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: 1.28rem;
+    margin: 0 0 2px;
+  }
+  .card.a h4 { color: var(--brass); }
+  .card.b h4 { color: var(--teal); }
+  .card .sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--ink-3);
+    margin-bottom: 14px;
+  }
+  .card ul { margin: 0; padding-left: 1.1em; }
+  .card li { margin-bottom: 8px; color: var(--ink-2); }
+  .card li b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- tables ---------- */
+
+  .tablewrap {
+    overflow-x: auto;
+    margin: 22px 0 8px;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14.5px;
+    min-width: 720px;
+  }
+  thead th {
+    text-align: left;
+    vertical-align: bottom;
+    padding: 14px 18px 11px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--ink-3);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--rule);
+  }
+  thead th.col-a { color: var(--brass); box-shadow: inset 0 3px 0 var(--brass); }
+  thead th.col-b { color: var(--teal); box-shadow: inset 0 3px 0 var(--teal); }
+  tbody td, tbody th {
+    text-align: left;
+    vertical-align: top;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--rule-soft);
+    font-weight: 400;
+    color: var(--ink-2);
+  }
+  tbody th {
+    color: var(--ink);
+    font-weight: 600;
+    width: 24%;
+    background: var(--surface-2);
+  }
+  tbody tr:last-child td, tbody tr:last-child th { border-bottom: none; }
+  td.col-a { border-left: 1px solid var(--rule-soft); }
+  td.col-b { border-left: 1px solid var(--rule-soft); }
+  table.tri thead th:nth-child(2), table.tri tbody td:nth-child(2) { width: 38%; }
+  table.tri thead th:nth-child(3), table.tri tbody td:nth-child(3) { width: 38%; }
+  td b { color: var(--ink); font-weight: 600; }
+  td .num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .92em; }
+  td ul { margin: 6px 0 0; padding-left: 1.05em; }
+  td li { margin-bottom: 4px; }
+
+  /* markers */
+  .mk {
+    font-family: var(--mono);
+    display: inline-block;
+    width: 1.15em;
+    margin-right: .35em;
+    font-size: 1.05em;
+    line-height: 1;
+  }
+  .mk.yes { color: var(--ink); }
+  .mk.part { color: var(--ink-3); }
+  .mk.no { color: var(--ink-3); }
+  tr.absent td.col-a, tr.absent td.col-b { color: var(--ink-3); }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 24px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    margin-top: 10px;
+  }
+
+  /* ---------- fx chip lists ---------- */
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .chips li {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    padding: 4px 9px;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--surface);
+    color: var(--ink-2);
+  }
+  .chips.a li { border-color: var(--brass); background: var(--brass-tint); color: var(--ink); }
+  .chips.b li { border-color: var(--teal); background: var(--teal-tint); color: var(--ink); }
+  .fxgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 32px;
+    margin-top: 24px;
+  }
+  .fxgrid h4 {
+    font-family: var(--body);
+    font-size: .82rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin: 0 0 4px;
+  }
+  .fxgrid .a-h { color: var(--brass); }
+  .fxgrid .b-h { color: var(--teal); }
+  .fxgrid p { font-size: 14px; color: var(--ink-2); margin: 0; }
+
+  /* ---------- key diagram ---------- */
+
+  .keys {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 28px;
+    margin-top: 26px;
+  }
+  .keybox {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    border-radius: 2px;
+    padding: 20px 22px 22px;
+    box-shadow: var(--shadow);
+  }
+  .keybox h4 { font-family: var(--display); font-weight: 400; font-size: 1.2rem; margin: 0 0 2px; }
+  .keybox.a h4 { color: var(--brass); }
+  .keybox.b h4 { color: var(--teal); }
+  .keybox .sub { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-3); margin-bottom: 16px; }
+  .keyrow { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--rule-soft); }
+  .keyrow:last-of-type { border-bottom: none; }
+  .keyrow .grp { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); flex: 0 0 92px; }
+  .keyrow .kk { display: flex; flex-wrap: wrap; gap: 4px; }
+  .kk span {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    min-width: 24px;
+    text-align: center;
+    padding: 3px 5px;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+  .keybox.a .kk span { border-color: var(--brass); }
+  .keybox.b .kk span { border-color: var(--teal); }
+  .keytotal { font-family: var(--mono); font-size: 12px; color: var(--ink-3); margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rule); }
+
+  /* ---------- limits ---------- */
+
+  .limits {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 24px;
+  }
+  .limitbox {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--ink-3);
+    background: var(--surface);
+    padding: 20px 22px 22px;
+    border-radius: 2px;
+  }
+  .limitbox.a { border-left-color: var(--brass); }
+  .limitbox.b { border-left-color: var(--teal); }
+  .limitbox h4 { font-family: var(--display); font-weight: 400; font-size: 1.2rem; margin: 0 0 12px; }
+  .limitbox.a h4 { color: var(--brass); }
+  .limitbox.b h4 { color: var(--teal); }
+  .limitbox ul { margin: 0; padding-left: 1.1em; }
+  .limitbox li { margin-bottom: 9px; color: var(--ink-2); }
+  .limitbox li b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- footer ---------- */
+
+  footer {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    font-size: 13.5px;
+    color: var(--ink-3);
+    max-width: 68ch;
+  }
+  footer p { margin-bottom: 10px; }
+  footer .src { font-family: var(--mono); font-size: 11.5px; }
+
+  a { color: inherit; }
+  a:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  /* ---------- print / PDF ---------- */
+
+  @media print {
+    :root {
+      --ground: #FFFFFF;
+      --surface: #FFFFFF;
+      --surface-2: #F1F3EF;
+      --ink: #14181A;
+      --ink-2: #3C4542;
+      --ink-3: #69736F;
+      --rule: #B7BEB6;
+      --rule-soft: #D9DED7;
+      --brass: #8A4F13;
+      --brass-tint: #F4EADB;
+      --teal: #0F565C;
+      --teal-tint: #DFECEB;
+      --shadow: none;
+    }
+    @page { size: A4; margin: 14mm 11mm; }
+
+    * {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+      box-shadow: none !important;
+    }
+    html, body { background: #FFFFFF; font-size: 9.3pt; }
+    .wrap { max-width: none; padding: 0; }
+
+    .masthead { padding: 0 0 12pt; gap: 12pt; }
+    h1 { font-size: 27pt; }
+    h1 .versus { font-size: .42em; padding: 0 .5em; }
+    .standfirst { font-size: 10.5pt; max-width: none; }
+    nav.toc { display: none; }
+
+    section { padding-top: 18pt; }
+    h2 { font-size: 15pt; break-after: avoid; }
+    h3 { margin: 14pt 0 6pt; break-after: avoid; }
+    p { margin-bottom: 7pt; }
+    .prose { max-width: none; }
+    .lede { font-size: 9.6pt; }
+
+    .tablewrap { overflow: visible; margin: 10pt 0 4pt; border-color: var(--rule); }
+    table { min-width: 0; font-size: 8.4pt; table-layout: fixed; }
+    thead { display: table-header-group; }
+    tr { break-inside: avoid; }
+    thead th, tbody td, tbody th { padding: 5pt 7pt; }
+    thead th.col-a { border-top: 2.5pt solid var(--brass); }
+    thead th.col-b { border-top: 2.5pt solid var(--teal); }
+    td .num, code, .m { font-size: .95em; background: transparent; padding: 0; }
+    .path { font-size: 7.4pt; }
+
+    .verdict, .limits, .keys, .fxgrid { gap: 12pt; }
+    .card, .keybox { break-inside: avoid; }
+    .card, .limitbox, .keybox { padding: 12pt 14pt 14pt; }
+    .limitbox li { break-inside: avoid; }
+    .card li, .limitbox li { margin-bottom: 5pt; }
+    .chips { gap: 3pt; }
+    .chips li { font-size: 7.6pt; padding: 2pt 5pt; }
+    .keyrow { padding: 4pt 0; }
+    .kk span { font-size: 8pt; padding: 1.5pt 4pt; }
+    .keytotal { font-size: 8.4pt; margin-top: 8pt; padding-top: 7pt; }
+    .legend { font-size: 8pt; }
+
+    footer { break-inside: avoid; margin-top: 24pt; max-width: none; }
+    a { text-decoration: none; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Confronto tecnico · fonti: manuali ufficiali AE-20, Parameter Guide AE-30/AE-20 v07, Diosynth Owner's Manual 1.0.2</div>
+    <h1><span class="a">Aerophone&nbsp;AE-20</span><span class="versus">vs</span><span class="b">ASM&nbsp;Diosynth</span></h1>
+    <p class="standfirst">Due filosofie opposte di fiato elettronico: un modulo ZEN-Core con la mappa tasti di un sax vero e un routing dei controller estremamente granulare, contro un vero sintetizzatore Hydrasynth con matrice di modulazione a 32 slot e controller gestuali — ma con la programmazione profonda spostata sul computer.</p>
+    <nav class="toc" aria-label="Indice">
+      <a href="#architettura">01 · Architettura sonora</a>
+      <a href="#controller">02 · Controller fisici</a>
+      <a href="#routing">03 · Profondità del routing</a>
+      <a href="#modulatori">04 · LFO, inviluppi, matrice</a>
+      <a href="#destinazioni">05 · Parametri modulabili</a>
+      <a href="#effetti">06 · Effetti</a>
+      <a href="#chiavi">07 · Chiavi e diteggiature sax</a>
+      <a href="#extra">08 · Harmonizer, drone, looper</a>
+      <a href="#intonazione">09 · Intonazione e scale</a>
+      <a href="#sistema">10 · Memoria, editing, I/O</a>
+      <a href="#limiti">11 · Cosa non si può fare</a>
+    </nav>
+  </header>
+
+  <section id="sintesi">
+    <h2>In breve</h2>
+    <div class="verdict">
+      <div class="card a">
+        <h4>Dove vince l'AE-20</h4>
+        <div class="sub">punti forti misurabili</div>
+        <ul>
+          <li><b>Mappa tasti da sax completa</b>: entrambe le tavole per i mignoli (G♯/C♯/B/B♭ e E♭/C), chiavi di palmo, chiavi laterali, F frontale.</li>
+          <li><b>Routing dei controller senza rivali</b>: fino a 8 funzioni sul fiato, 4 per morso giù e 4 per morso su, con min/max in ingresso e uscita, latch/momentary e 12 curve — <em>per ogni</em> assegnazione.</li>
+          <li><b>4 parti</b> (una batteria) con split per tasto, velocity e X-Fade; <b>4 partial</b> per tone.</li>
+          <li><b>Catena effetti molto più ampia</b>: 1 MFX per tone + 1 IFX di scena + chorus, delay e reverb dedicati con tipi multipli.</li>
+          <li><b>Armonizzatore fino a 4 voci</b>, drone, unisono, 8 modi di diteggiatura + diteggiature utente.</li>
+          <li><b>Backup e import su chiavetta USB</b>, import di SOUND PACK ZEN-Core.</li>
+        </ul>
+      </div>
+      <div class="card b">
+        <h4>Dove vince il Diosynth</h4>
+        <div class="sub">punti forti misurabili</div>
+        <ul>
+          <li><b>È un vero sintetizzatore</b>: motore Hydrasynth con 2 oscillatori WaveScan, 219 forme d'onda, 16 modelli di filtro (incluso il vowel filter), noise con morphing filter.</li>
+          <li><b>Matrice di modulazione a 32 slot</b>, <b>5 LFO</b> con modi step-sequencer e <b>5 inviluppi</b> con modi loop.</li>
+          <li><b>Growl come funzione di sistema</b> (ring mod con terzo oscillatore) assegnabile a pad, gyro o joystick.</li>
+          <li><b>Controller gestuali</b>: joystick XY, 2 pad sensibili alla pressione, 3 pulsanti assegnabili, sensore gyro (il pitch-bend del joystick arriva a ±1200 cent).</li>
+          <li><b>Circa 70 scale</b> incluse microtonali 19 e 31 toni, master tuning 380–500 Hz, trasposizione ±11.</li>
+          <li><b>MIDI DIN in ingresso e uscita</b>, sync del clock da USB/DIN, doppio flusso di breath MIDI simultaneo.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="architettura">
+    <h2>01 · Architettura sonora</h2>
+    <div class="prose">
+      <p class="lede">La differenza strutturale determina tutto il resto. L'AE-20 è un modulo ZEN-Core montato su un corpo da fiato: la voce si costruisce per <em>partial</em> dentro un <em>tone</em>, e più tone si sommano in una <em>scene</em>. Il Diosynth è un Hydrasynth con un motore campionatore affiancato: la voce è un <em>patch</em> di due <em>part</em>, ognuna con synth e campione insieme.</p>
+    </div>
+    <div class="tablewrap">
+      <table class="tri">
+        <thead>
+          <tr><th scope="col">Aspetto</th><th scope="col" class="col-a">Aerophone AE-20</th><th scope="col" class="col-b">ASM Diosynth</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Motore</th>
+            <td class="col-a">ZEN-Core + SuperNATURAL acoustic (solo preset) + drum kit ZEN-Core (solo preset)</td>
+            <td class="col-b">Motore Hydrasynth + motore di riproduzione campioni, sempre disponibili in parallelo nella stessa part</td>
+          </tr>
+          <tr>
+            <th scope="row">Struttura della voce</th>
+            <td class="col-a">Scene → 4 part (di cui 1 batteria) → tone → <b>4 partial</b><span class="path">SCENE ▸ PART / MODE / RANGE</span></td>
+            <td class="col-b">Patch → <b>2 part</b> (layer o split) → per part: 2 osc WaveScan + noise + engine campioni<span class="path">EDIT ▸ Part 1 / Part 2</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Oscillatori</th>
+            <td class="col-a">Per partial: PCM (banchi INT A–D), <b>VA</b> (SAW, SQR, TRI, SIN, RAMP, JUNO, TRI2, TRI3, SIN2), PCM-Sync, SuperSAW, Noise. Pulse width + PWM, FXM, gain, attenuatore</td>
+            <td class="col-b">2 oscillatori <b>WaveScan</b> con <b>219 forme d'onda</b>, generatore di rumore con morphing filter, terzo oscillatore dedicato al Growl (ring mod)</td>
+          </tr>
+          <tr>
+            <th scope="row">Sintesi incrociata</th>
+            <td class="col-a"><b>Structure</b> tra coppie di partial: SYNC, RING, XMOD, XMOD2 + Partial Phase Lock; FXM con 4 color e depth 0–16</td>
+            <td class="col-b"><b>Growl</b> con 15 modalità (ring mod con terzo oscillatore) come blocco dedicato nel voice path</td>
+          </tr>
+          <tr>
+            <th scope="row">Filtri</th>
+            <td class="col-a">Filter Type TVF o VCF; tipi TVF: LPF, BPF, HPF, PKG, LPF2, LPF3 (con VCF la polifonia cala)</td>
+            <td class="col-b"><b>16 modelli di filtro Hydrasynth</b>, incluso il vowel filter, più il morphing filter sul noise</td>
+          </tr>
+          <tr>
+            <th scope="row">Libreria acustica</th>
+            <td class="col-a">Oltre <b>260 scene preset</b> in 12 categorie (synth lead/pad/brass/bass, legni, ottoni, archi, etnici, tastiere, chitarre/bassi, voci, percussioni)</td>
+            <td class="col-b"><b>128 strumenti campionati</b> (flauti dal piccolo al contrabbasso, sax dal soprano al Tubax E♭, clarinetti, doppie canne, ottoni con sordine e sezioni, archi, armoniche, accordion, fiati e archi cinesi) + campioni di key-off, attacco e respiro</td>
+          </tr>
+          <tr>
+            <th scope="row">Espandibilità</th>
+            <td class="col-a">Import di <b>SOUND PACK</b> ZEN-Core e di tone da FANTOM via chiavetta USB<span class="path">solo AE-30: Wave Expansion e campioni utente</span></td>
+            <td class="col-b">Banchi sonori scaricabili da ASM tramite Diosynth Manager. Nessun import di campioni utente documentato</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="controller">
+    <h2>02 · Controller fisici</h2>
+    <div class="prose">
+      <p class="lede">L'AE-20 non ha sensori di movimento: motion sensor e thumb pad sono esclusive dell'AE-30. Il Diosynth colma quel vuoto con gyro, joystick XY e due pad di pressione, ma non ha una leva del pollice né chiavi laterali assegnabili.</p>
+    </div>
+    <div class="tablewrap">
+      <table class="tri">
+        <thead>
+          <tr><th scope="col">Controller</th><th scope="col" class="col-a">Aerophone AE-20</th><th scope="col" class="col-b">ASM Diosynth</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Fiato</th>
+            <td class="col-a">Breath Curve <span class="num">L5–L1 / M / H1–H5</span> (11 curve), Breath Adjust <span class="num">1–50</span> (soglia), <b>Hold Mode</b>: Off / Breath (nota tenuta, si interrompe inspirando) / Key<span class="path">MENU ▸ System</span></td>
+            <td class="col-b">Breath Minimum <span class="num">1–127</span>, Breath Gain <span class="num">0–127</span> (20 = unity), <b>12 curve</b> (Exp5→Exp1, Linear, S-curve, Log1→Log5). Nessun hold documentato<span class="path">SETUP ▸ Controller</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Morso (bite)</th>
+            <td class="col-a">Modi <b>Off / Sax</b> (solo verso il basso) <b>/ E-Wind</b> (vibrato ciclico). Bend range morso <span class="num">0–2400 cent</span> separato per giù e su e per ciascun modo. Bite Center Auto o <span class="num">1–70</span>, Bite Sense <span class="num">1–10</span>, calibrazione guidata</td>
+            <td class="col-b">Modi <b>Off / Sax</b> (solo giù) <b>/ Loose</b> (solo su, per imboccature da flauto dolce) <b>/ EWI</b> (bidirezionale con ritorno automatico). Bite Zero <span class="num">0–127</span> (zona morta), Bite Depth <span class="num">0–127</span>, Bite Function Off / Patch / Pitch bend</td>
+          </tr>
+          <tr>
+            <th scope="row">Lingua (tonguing)</th>
+            <td class="col-a">Velocity da tonguing oppure fissa <span class="num">1–127</span>, sia interna che in uscita MIDI</td>
+            <td class="col-b">Velocity da articolazione sul sensore di fiato; in MIDI On (1–127) o fissa a 60, 80, 100, 110, 127</td>
+          </tr>
+          <tr class="absent">
+            <th scope="row">Sensore di movimento</th>
+            <td class="col-a"><span class="mk no" aria-hidden="true">○</span>Assente. Motion sensor su 2 assi (Elevation, Tilt, Tilt Full, Tilt Left, Tilt Right) e modo Vibrato esistono <b>solo sull'AE-30</b></td>
+            <td class="col-b"><span class="mk yes" aria-hidden="true">●</span><b>Gyro</b> a un asse: rilevamento dell'inclinazione <em>verso l'alto</em>. Destinazioni: Off, Patch, Vibrato, Growl, Glide on/off, Glide Rate, Tone</td>
+          </tr>
+          <tr>
+            <th scope="row">Controller a pollice destro</th>
+            <td class="col-a"><b>Thumb lever</b> su e giù, indipendenti, con bend range <span class="num">0–24 semitoni</span>. Nessun thumb pad (solo AE-30)</td>
+            <td class="col-b"><b>Joystick XY</b> a ritorno automatico: verticale = pitch bend con <span class="num">0–1200 cent</span> impostabili separatamente su e giù; orizzontale assegnabile. <b>2 pad di pressione</b> P1/P2 con sensibilità Off/1–10</td>
+          </tr>
+          <tr>
+            <th scope="row">Pulsanti assegnabili</th>
+            <td class="col-a"><b>S1, S2</b> + <b>7 chiavi laterali assegnabili</b> (X, C1–C5, Tc, Ta), 2 funzioni ciascuno, latch o momentary<span class="path">MENU ▸ Assign</span></td>
+            <td class="col-b"><b>3 pulsanti Assign</b> per il pollice sinistro, latch o momentary. Le chiavi di esecuzione <em>non</em> sono assegnabili</td>
+          </tr>
+          <tr>
+            <th scope="row">Chiavi d'ottava</th>
+            <td class="col-a">4 chiavi con modi <b>Oct2</b> (±2), <b>Oct3</b> (±3), <b>Sax1</b> (compatibile sax: la chiave alta sale solo di +1), <b>Sax2</b> (compatibile sax baritono, arriva al La grave)</td>
+            <td class="col-b">4 pulsanti con range <b>±2</b> o <b>±3</b> ottave. Nessun modo compatibile sax. Estensione dichiarata 9 ottave</td>
+          </tr>
+          <tr>
+            <th scope="row">Manopole e display</th>
+            <td class="col-a">Manopola SCENE CATEGORY (categoria / banco utente / preferiti) + manopola VOLUME riassegnabile a System Transpose, Speaker Volume, Output Volume o entrambi</td>
+            <td class="col-b">Encoder cliccabile + 5 pulsanti modo (TRANS, FAV, SETUP, SAVE, SOUND/EDIT). Due manopole di volume separate: Speaker/Phones e Output</td>
+          </tr>
+          <tr>
+            <th scope="row">Vibrato di sistema</th>
+            <td class="col-a">Nessun LFO di vibrato globale attivabile. Si ottiene con il morso in modo E-Wind, con gli offset Vibrato Rate/Depth/Delay della scena o con l'LFO del partial</td>
+            <td class="col-b"><b>Vibrato globale dedicato</b>: Rate <span class="num">0,30–10 Hz</span>, Amount <span class="num">0–12 semitoni</span>, richiamabile da pad, gyro o joystick</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    <div class="legend"><span><span class="mk yes" aria-hidden="true">●</span> presente</span><span><span class="mk part" aria-hidden="true">◐</span> parziale o condizionato</span><span><span class="mk no" aria-hidden="true">○</span> assente</span></div>
+  </section>
+
+  <section id="routing">
+    <h2>03 · Quanto è profondo il routing dei controller</h2>
+    <div class="prose">
+      <p class="lede">Qui la differenza è netta e va nella direzione opposta a quella che l'architettura sonora suggerirebbe. Sull'AE-20 ogni controller regge <em>più funzioni contemporanee</em>, ognuna con scalatura e curva propria, ed esistono <em>due strati indipendenti</em>: uno verso il motore interno, uno verso il MIDI. Sul Diosynth ogni controller ha <em>una</em> destinazione globale scelta da una lista corta; tutto il resto passa dalla modalità <code>Patch</code>, cioè dalla matrice di modulazione, editabile solo da computer.</p>
+    </div>
+    <div class="tablewrap">
+      <table class="tri">
+        <thead>
+          <tr><th scope="col">Capacità</th><th scope="col" class="col-a">Aerophone AE-20</th><th scope="col" class="col-b">ASM Diosynth</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Assegnazioni per controller</th>
+            <td class="col-a">Fiato <b>8</b> · Morso giù <b>4</b> · Morso su <b>4</b> · Leva giù <b>2</b> · Leva su <b>2</b> · S1 <b>2</b> · S2 <b>2</b> · ogni chiave laterale <b>2</b></td>
+            <td class="col-b"><b>1</b> destinazione globale per controller. Le assegnazioni multiple esistono solo dentro il patch, via matrice a 32 slot</td>
+          </tr>
+          <tr>
+            <th scope="row">Strati indipendenti</th>
+            <td class="col-a"><b>Due</b>: <code>Assign</code> (motore interno) e <code>MIDI</code> (uscita), configurabili separatamente e attivabili con lo switch MIDI CONTROL<span class="path">MENU ▸ Assign / MENU ▸ MIDI</span></td>
+            <td class="col-b"><b>Uno</b> per il suono interno (Patch/globale) più una tabella <code>Tx</code> separata che definisce cosa esce in MIDI per ciascun controller</td>
+          </tr>
+          <tr>
+            <th scope="row">Scalatura</th>
+            <td class="col-a">Input Min/Max <em>e</em> Output Min/Max <span class="num">0–127</span> per ogni singola assegnazione, con inversione possibile</td>
+            <td class="col-b">Sensibilità <span class="num">1–10</span> sui pad, Bite Zero come zona morta, ampiezze in cent sul joystick. Nessuna scalatura in/out generica sull'unità</td>
+          </tr>
+          <tr>
+            <th scope="row">Curve di risposta</th>
+            <td class="col-a"><b>12 curve</b> per assegnazione: Linear, Exp L/M1/M2/H, Log L/M1/M2/H, S-Shape, Reverse S, Step</td>
+            <td class="col-b"><b>12 curve</b> ma solo sul fiato, e globali (Exp5→Exp1, Linear, S, Log1→Log5)</td>
+          </tr>
+          <tr>
+            <th scope="row">Modo di funzionamento</th>
+            <td class="col-a">Latch o Momentary per ogni assegnazione, con Release Value e Press Value sui controller a pulsante</td>
+            <td class="col-b">Latch o Momentary sui pulsanti Assign e sui pad</td>
+          </tr>
+          <tr>
+            <th scope="row">Globale o per suono</th>
+            <td class="col-a">Commutabile controller per controller: <code>Asgn Src Breath</code>, <code>Bite</code>, <code>Lever</code>, <code>S1/S2</code>, <code>Key</code> = System oppure Scene</td>
+            <td class="col-b">Ogni controller sceglie tra un valore globale e <code>Patch</code>. Master tuning, transpose, scale e pitch bend hanno anch'essi modo Global o Patch</td>
+          </tr>
+          <tr>
+            <th scope="row">Funzioni assegnabili (interne)</th>
+            <td class="col-a">Off, <b>CC01–31 e CC33–95</b>, Bend Down, Bend Up, After Touch, Scene ±, Favorite ±, Chorus Sw, Reverb Sw, Delay Sw, IFX Sw, <b>Unison Sw</b>, Oct ±, Transpose ±, <b>Drone Sw</b>, <b>Harmony Sw</b>, <b>X-Fade</b>, Scale Tune Sw<span class="path">non assegnabili a fiato o morso: Scene ±, Favorite ±, Chorus/Reverb/Delay/IFX/Unison Sw, Oct ±, Transpose ±, Drone Sw, Scale Tune Sw. Harmony Sw e X-Fade invece sì</span></td>
+            <td class="col-b">Liste brevi e per tipo di controller: pad → Off, Patch, Vibrato, Growl, Glide, Glide Rate · gyro → gli stessi più Tone · joystick orizzontale → Off, Patch, Vibrato, Growl, Glide Rate, Tone · pulsanti Assign → Off, Patch, Patch ±, Favorite ±, Glide on/off</td>
+          </tr>
+          <tr>
+            <th scope="row">Funzioni assegnabili (MIDI)</th>
+            <td class="col-a">Off, CC01–31 e CC33–95, Bend Down/Up, After Touch, Drone Sw, Harmony Sw, <b>Start/Stop</b> (FA/FC)</td>
+            <td class="col-b">Per controller: CC 1–127, Breath (CC2), Aftertouch, Volume (CC7), Expression (CC11), Mod wheel (CC1), Pitchbend + / −, e <b>Program Change 0–127</b> sui pulsanti Assign</td>
+          </tr>
+          <tr>
+            <th scope="row">Fiato in MIDI</th>
+            <td class="col-a">Fino a 8 messaggi simultanei, ognuno con range e curva propri</td>
+            <td class="col-b"><b>Due flussi simultanei</b> dedicati (Breath 1 Tx e Breath 2 Tx), per default CC2 + Aftertouch — comodo per i moduli che non leggono CC2</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="modulatori">
+    <h2>04 · Modulatori interni: LFO, inviluppi, matrice</h2>
+    <div class="prose">
+      <p class="lede">Qui il rapporto si ribalta di nuovo. Il Diosynth ha più sorgenti e più slot; l'AE-20 ha meno slot ma sorgenti insolite (tempo, keyfollow, gli inviluppi stessi) e un LFO a passi molto elaborato.</p>
+    </div>
+    <div class="tablewrap">
+      <table class="tri">
+        <thead>
+          <tr><th scope="col">Modulatore</th><th scope="col" class="col-a">Aerophone AE-20</th><th scope="col" class="col-b">ASM Diosynth</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">LFO — quantità</th>
+            <td class="col-a"><b>2 per partial</b>, quindi fino a 8 per tone<span class="path">TONE ▸ PARTIAL ▸ LFO1 / LFO2</span></td>
+            <td class="col-b"><b>5 LFO</b> con modalità step-sequencer</td>
+          </tr>
+          <tr>
+            <th scope="row">LFO — forme d'onda</th>
+            <td class="col-a">11 forme: SIN, TRI, SAW-UP, SAW-DW, SQR, RND, TRP, S&amp;H, CHS (caos), VSIN, <b>STEP</b></td>
+            <td class="col-b">Non enumerate nel manuale (editing completo solo in Diosynth Manager); dichiarati i modi step-sequencer</td>
+          </tr>
+          <tr>
+            <th scope="row">LFO — step</th>
+            <td class="col-a"><b>16 step</b> con depth <span class="num">-72…+72</span> ciascuno e <b>37 tipi di curva</b> per step (quadre, saw asc./disc., esponenziali, curve di carica)</td>
+            <td class="col-b">Step-sequencer dichiarato nelle specifiche, parametri non documentati sull'unità</td>
+          </tr>
+          <tr>
+            <th scope="row">LFO — controllo</th>
+            <td class="col-a">Rate <span class="num">0–1023</span> o sincronizzato a nota <span class="num">1/64T–4</span>, Offset, Rate Detune, Delay Time con key-follow, <b>Fade Mode</b> ON-IN / ON-OUT / OFF-IN / OFF-OUT, Key Trigger, fase iniziale. Depth verso pitch, filtro, ampiezza e pan</td>
+            <td class="col-b">Editabile in Diosynth Manager. Sull'unità è esposto solo il vibrato globale (rate e amount)</td>
+          </tr>
+          <tr>
+            <th scope="row">Inviluppi</th>
+            <td class="col-a"><b>3 per partial</b> — pitch, filtro, ampiezza — a 4 tempi e 4 livelli, con modo ADSR semplificato, Envelope Mode NO-SUS o SUSTAIN, Damper Free Note</td>
+            <td class="col-b"><b>5 inviluppi</b> con <b>modalità loop</b>, più gli inviluppi propri del motore campioni (Sample PEG e AEG)</td>
+          </tr>
+          <tr>
+            <th scope="row">Matrice di modulazione</th>
+            <td class="col-a"><b>4 Matrix Control per tone</b>, ognuno con 1 sorgente e fino a 4 destinazioni e sensibilità <span class="num">±63</span> → fino a 16 collegamenti, ma solo 4 sorgenti. In più <b>4 MFX Control</b> per pilotare l'effetto</td>
+            <td class="col-b"><b>32 slot</b> di matrice di modulazione</td>
+          </tr>
+          <tr>
+            <th scope="row">Sorgenti di modulazione</th>
+            <td class="col-a">CC01–31, CC33–95, Bend, Aftertouch, SYS-CTRL 1–4 (quattro CC definiti a livello di sistema), <b>Velocity</b>, <b>Keyfollow</b>, <b>Tempo</b>, LFO1, LFO2, inviluppo di pitch, di filtro, di ampiezza</td>
+            <td class="col-b">Tutti i controller fisici (fiato, morso, joystick, pad, gyro), LFO e inviluppi. Elenco completo solo in Diosynth Manager</td>
+          </tr>
+          <tr>
+            <th scope="row">Altre variabilità</th>
+            <td class="col-a"><b>Analog Feel</b> <span class="num">0–127</span>, <b>Pitch Drift</b> <span class="num">0–255</span>, <b>Condition</b> <span class="num">0–100</span> (invecchiamento simulato), Partial Delay per arpeggi da un solo tasto, PMT con velocity/random/cycle</td>
+            <td class="col-b">Livelli separati per campione, rumore di respiro, rumore d'attacco, campioni di key-off e Growl, con soglie di fiato indipendenti nel voice path</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="destinazioni">
+    <h2>05 · Parametri modulabili</h2>
+    <div class="prose">
+      <p class="lede">L'AE-20 pubblica l'elenco completo delle destinazioni. Il Diosynth no: il manuale documenta solo le destinazioni globali dei controller, e rimanda a Diosynth Manager per la matrice. È l'asimmetria informativa più importante di questo confronto.</p>
+      <h3>AE-20 — destinazioni della Matrix Control</h3>
+      <p>Elencate integralmente nella Parameter Guide, valide per partial.</p>
+    </div>
+    <ul class="chips a">
+      <li>PCH pitch</li><li>CUT cutoff</li><li>RES risonanza</li><li>LEV livello</li><li>PAN</li><li>CHO chorus</li><li>REV reverb</li>
+      <li>PIT-LFO1/2 vibrato</li><li>FLT-LFO1/2 wah</li><li>AMP-LFO1/2 tremolo</li><li>PAN-LFO1/2</li><li>LFO1/2-RATE</li>
+      <li>PIT-ATK</li><li>PIT-DCY</li><li>PIT-REL</li><li>FLT-ATK</li><li>FLT-DCY</li><li>FLT-REL</li><li>AMP-ATK</li><li>AMP-DCY</li><li>AMP-REL</li>
+      <li>PIT-DEPTH</li><li>FLT-DEPTH</li><li>AMP-DEPTH</li>
+      <li>PMT split partial</li><li>FXM</li><li>PW</li><li>PWM</li><li>FAT</li><li>ATT attenuatore osc</li>
+      <li>XMOD</li><li>XMOD2</li><li>RING-OSC1-LEV</li><li>RING-OSC2-LEV</li><li>XMOD-OSC1-LEV</li><li>XMOD-OSC2-LEV</li>
+      <li>SSAW-DETN</li><li>LFO1-STEP</li><li>LFO2-STEP</li><li>MFX-CTRL1–4</li>
+    </ul>
+    <div class="prose">
+      <h3>AE-20 — offset di scena, raggiungibili anche via CC</h3>
+      <p>Cutoff, Resonance, Attack, Decay, Release, Vibrato Rate, Vibrato Depth, Vibrato Delay, tutti su scala <code>-64…+63</code>, più Part Level, Part Pan, i tre send e Portamento Time. Il tono si controlla anche via CC dall'esterno: <code>CC74</code> cutoff, <code>CC71</code> risonanza, <code>CC73</code> attacco, <code>CC75</code> decay, <code>CC72</code> release, <code>CC76/77/78</code> vibrato rate/depth/delay, <code>CC5</code> portamento time, <code>CC65</code> portamento, <code>CC68</code> legato, <code>CC30</code> X-Fade, <code>CC16/18/19/80/81/82</code> per i controlli SuperNATURAL (noise level, growl, bend mode, staccato, drone, ornament, fall, pizzicato, subtone, tremolo).</p>
+      <h3>Diosynth — destinazioni documentate sull'unità</h3>
+      <p>Le destinazioni globali assegnabili ai controller sono cinque: <b>Vibrato</b>, <b>Growl</b>, <b>Glide on/off</b>, <b>Glide Rate</b>, <b>Tone</b> (brillantezza). Sull'unità si editano poi EQ a 4 bande per part, tipo e due parametri per ciascun effetto, send e return, Dry Level e Patch Level. <b>Tutto il resto</b> — forme d'onda, filtri, LFO, inviluppi, i 32 slot di matrice — richiede Diosynth Manager su Windows o macOS.</p>
+    </div>
+  </section>
+
+  <section id="effetti">
+    <h2>06 · Effetti</h2>
+    <div class="prose">
+      <p class="lede">L'AE-20 ha una catena molto più articolata: un MFX per ogni tone, più un IFX di scena, più tre send con tipi selezionabili. Il Diosynth ha due insert (uno per part) e due send master più il reverb, ma li rende editabili direttamente sullo strumento e li sincronizza al clock esterno.</p>
+    </div>
+    <div class="tablewrap">
+      <table class="tri">
+        <thead>
+          <tr><th scope="col">Catena</th><th scope="col" class="col-a">Aerophone AE-20</th><th scope="col" class="col-b">ASM Diosynth</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Insert</th>
+            <td class="col-a"><b>1 MFX per tone</b> (quindi fino a 4 in una scene a 4 part) + <b>1 IFX di scena</b> — entrambi scelti dalla stessa lista di <b>37 tipi</b></td>
+            <td class="col-b"><b>1 insert per part</b>, quindi 2 in totale, scelti dalla lista di <b>35 tipi</b></td>
+          </tr>
+          <tr>
+            <th scope="row">Send</th>
+            <td class="col-a"><b>3 send</b>: Chorus (4 tipi), Delay (5 tipi), Reverb (7 tipi), con send level per partial, per part e per IFX, e reverb send in cascata da chorus e delay</td>
+            <td class="col-b"><b>2 send master</b> (MFX1, MFX2) dalla lista dei 35 tipi + <b>1 reverb master</b> con 4 tipi, ognuno con send e return indipendenti</td>
+          </tr>
+          <tr>
+            <th scope="row">EQ</th>
+            <td class="col-a">EQ di part a 4 bande con input gain, frequenze <span class="num">20–16000 Hz</span>, Mid Q <span class="num">0,5–16</span>, gain <span class="num">±24 dB</span> + EQ per partial a 3 bande</td>
+            <td class="col-b">EQ per part: 4 gain (Low, Mid1, Mid2, Hi) da <span class="num">±12 dB</span> sull'unità; le tre bande medie complete solo in Manager</td>
+          </tr>
+          <tr>
+            <th scope="row">Modulazione degli effetti</th>
+            <td class="col-a"><b>MFX Control</b>: 4 parametri dell'effetto pilotabili da CC, bend, aftertouch o SYS-CTRL, con sensibilità <span class="num">±63</span>. Interruttori Chorus/Reverb/Delay/IFX assegnabili a S1, S2, chiavi laterali e leva. Comando <b>All Effects Off</b></td>
+            <td class="col-b">Master Reverb, Master FX1 e Master FX2 hanno un on/off globale — utile per registrare a secco. Nessuna modulazione dei parametri d'effetto dai controller documentata sull'unità</td>
+          </tr>
+          <tr>
+            <th scope="row">Sync al tempo</th>
+            <td class="col-a">Scene Tempo <span class="num">20–300</span> con delay e tremolo sincronizzabili a nota. <b>Nessuna ricezione di clock MIDI</b> documentata: il tempo resta interno</td>
+            <td class="col-b"><b>Clock Source</b> Internal / USB MIDI / DIN MIDI, tempo <span class="num">30–240</span>. Delay, echo, phaser e autowah tempo-sync si agganciano al DAW</td>
+          </tr>
+          <tr>
+            <th scope="row">Editing sullo strumento</th>
+            <td class="col-a">Solo profondità e on/off (Scene Chorus/Reverb/Delay, IFX Sw, All Effects Off). Tutti i parametri richiedono l'app <b>Aerophone Pro Editor</b> su smartphone</td>
+            <td class="col-b">Tipo effetto, <b>2 parametri</b>, send, return, EQ, Dry e Patch Level direttamente dal menu EDIT. Il resto in <b>Diosynth Manager</b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="fxgrid">
+      <div>
+        <h4 class="a-h">AE-20 · 37 tipi MFX/IFX</h4>
+        <p>La stessa lista serve sia l'MFX del tone che l'IFX di scena. Nessuna voce è riservata all'AE-30.</p>
+        <ul class="chips a">
+          <li>Thru</li><li>Equalizer</li><li>Low Boost</li><li>Enhancer</li><li>Auto Wah</li><li>Humanizer</li><li>Speaker Sim</li><li>Phaser 1</li><li>Tremolo</li><li>Auto Pan</li><li>VK Rotary</li><li>Chorus</li><li>Flanger</li><li>Step Flanger</li><li>Hexa-Chorus</li><li>Space-D</li><li>Overdrive</li><li>Distortion</li><li>T-Scream</li><li>Guitar Amp Sim</li><li>Compressor</li><li>Limiter</li><li>Delay</li><li>Mod Delay</li><li>3Tap Pan Dly</li><li>Tape Echo</li><li>LOFI Comp</li><li>Pitch Shifter</li><li>2V Pshifter</li><li>Gt → Delay</li><li>CE-1</li><li>SBF-325</li><li>SDD-320</li><li>2Tap Pan Dly</li><li>Fuzz</li><li>JUNO-106 Chorus</li><li>Exciter</li>
+        </ul>
+        <h4 class="a-h" style="margin-top:24px">Send dedicati</h4>
+        <p>Chorus: Chorus, CE-1, SDD-320, JUNO-106 Chorus. Delay: Delay, T-Ctrl Dly, Delay→Trem, 2Tap PanDly, 3Tap PanDly. Reverb: INTEGRA-7 Rev, Warm Hall, Hall, GS Reverb, SRV-2000, SRV-2000 NL, GM2 Reverb — l'SRV-2000 include un EQ a tre bande parametrico interno al riverbero.</p>
+      </div>
+      <div>
+        <h4 class="b-h">Diosynth · 35 tipi insert/master</h4>
+        <p>Lista unica per gli insert di part e per i due send master. Ogni tipo espone 2 parametri sull'unità.</p>
+        <ul class="chips b">
+          <li>Bypass</li><li>Room</li><li>Hall 1</li><li>Hall 2</li><li>Real</li><li>Tempo Delay</li><li>Tempo Echo</li><li>Cross Delay</li><li>Chorus 1</li><li>Chorus 2</li><li>Flanger</li><li>Ensemble</li><li>Dual Rotary</li><li>Phaser</li><li>Tempo Phaser</li><li>Classic OD</li><li>Overdrive</li><li>AMP 1</li><li>AMP 2</li><li>Clas Metal</li><li>Clas Hard</li><li>Hard Dist</li><li>Metal Dist</li><li>EQ</li><li>EQ Hi-Fi</li><li>EQ Rock</li><li>Comp</li><li>Comp Standard</li><li>Comp Limiter</li><li>Comp Attack</li><li>Vibrato</li><li>Cls Tremolo</li><li>AutoPan</li><li>AutoWah</li><li>BPMAutoWah</li>
+        </ul>
+        <h4 class="b-h" style="margin-top:24px">Reverb master</h4>
+        <p>Room, Standard, Hall, Church, con Reverb Time da <span class="num">10 ms a 30 s</span> e Lo-Cut da Thru a 8 kHz. Le simulazioni di pedali (MT2, DS1, JC120, TS808) e di ampli (Stack, Combo, Tube) sono selezionabili come parametro dell'effetto.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="chiavi">
+    <h2>07 · Chiavi e diteggiature da sassofono</h2>
+    <div class="prose">
+      <p class="lede">Se vieni dal sax, questa è la sezione che pesa più di tutte le altre. L'AE-20 riproduce la mappa di un sax reale, comprese <em>entrambe</em> le tavole per i mignoli. Il Diosynth semplifica: al posto delle spatole individuate ha gruppi di chiavi che agiscono per combinazione.</p>
+    </div>
+    <div class="keys">
+      <div class="keybox a">
+        <h4>AE-20 · 22 chiavi + 4 d'ottava</h4>
+        <div class="sub">mappa da sax completa</div>
+        <div class="keyrow"><span class="grp">Mano sx</span><span class="kk"><span>X</span><span>1</span><span>P</span><span>2</span><span>3</span></span></div>
+        <div class="keyrow"><span class="grp">Palmo sx</span><span class="kk"><span>C1</span><span>C2</span><span>C4</span></span></div>
+        <div class="keyrow"><span class="grp">Mignolo sx</span><span class="kk"><span>G♯</span><span>C♯</span><span>B</span><span>B♭</span></span></div>
+        <div class="keyrow"><span class="grp">Mano dx</span><span class="kk"><span>4</span><span>5</span><span>6</span></span></div>
+        <div class="keyrow"><span class="grp">Laterali dx</span><span class="kk"><span>C3</span><span>C5</span><span>Tc</span><span>Ta</span><span>Tf</span></span></div>
+        <div class="keyrow"><span class="grp">Mignolo dx</span><span class="kk"><span>E♭</span><span>C</span></span></div>
+        <div class="keyrow"><span class="grp">Ottave</span><span class="kk"><span>+2</span><span>+1</span><span>−1</span><span>−2</span></span></div>
+        <div class="keytotal">Estensione della diteggiatura sax base: <b>A♯/B♭3 → F♯/G♭5</b>, con diteggiature alternative indicate per molte note. Le chiavi X, C1–C5, Tc e Ta sono anche <b>assegnabili a funzioni</b>.</div>
+      </div>
+      <div class="keybox b">
+        <h4>Diosynth · 17 chiavi + 4 d'ottava</h4>
+        <div class="sub">mappa da sax semplificata</div>
+        <div class="keyrow"><span class="grp">Mano sx</span><span class="kk"><span>L2</span><span>L4</span><span>L5</span><span>L6</span><span>L7</span></span></div>
+        <div class="keyrow"><span class="grp">Variabili sx</span><span class="kk"><span>L1</span><span>L3</span><span>LS1</span><span>LS2</span></span></div>
+        <div class="keyrow"><span class="grp">Mano dx</span><span class="kk"><span>R1</span><span>R2</span><span>R4</span><span>R5</span><span>R6</span></span></div>
+        <div class="keyrow"><span class="grp">Variabili dx</span><span class="kk"><span>R3</span><span>RS1</span><span>RS2</span></span></div>
+        <div class="keyrow"><span class="grp">Ottave</span><span class="kk"><span>1</span><span>2</span><span>1</span><span>2</span></span></div>
+        <div class="keytotal">La funzione di L1, L3, LS1, LS2, RS1, RS2 e R3 <b>cambia col modo di diteggiatura</b>. Nel diagramma sax un gruppo di chiavi «in qualsiasi combinazione non cambia nulla» e un altro «in qualsiasi combinazione abbassa di un semitono»: non ci sono spatole individuate per i mignoli.</div>
+      </div>
+    </div>
+    <div class="tablewrap">
+      <table class="tri">
+        <thead>
+          <tr><th scope="col">Aspetto</th><th scope="col" class="col-a">Aerophone AE-20</th><th scope="col" class="col-b">ASM Diosynth</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Modi di diteggiatura</th>
+            <td class="col-a"><b>8</b>: Sax, Recorder, E-Wind, Trumpet, Left Hand, Right Hand, Flute, Clarinet<span class="path">MENU ▸ System ▸ Fingering Mode</span></td>
+            <td class="col-b"><b>4</b>: Sax, Flute, Recorder, Trumpet<span class="path">SETUP ▸ System ▸ Fingering</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Diteggiature a una mano</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span>Modi <b>Left Hand</b> e <b>Right Hand</b> dedicati</td>
+            <td class="col-b"><span class="mk no" aria-hidden="true">○</span>Assenti</td>
+          </tr>
+          <tr>
+            <th scope="row">Diteggiature utente</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span><b>User Fingering</b>: fino a <b>36</b> diteggiature personalizzate, aggiungibili e cancellabili dallo strumento premendo la combinazione e la chiave +2</td>
+            <td class="col-b"><span class="mk no" aria-hidden="true">○</span>Non documentate</td>
+          </tr>
+          <tr>
+            <th scope="row">Ridefinizione della singola chiave</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span><b>Key Function</b> per chiave: Off (disattiva), Sax Key, Semitone Down/Up, Wholetone Down/Up</td>
+            <td class="col-b"><span class="mk no" aria-hidden="true">○</span>Assente sull'unità</td>
+          </tr>
+          <tr>
+            <th scope="row">Modo compatibile sax per le ottave</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span><b>Sax1</b> (chiave alta = solo +1 ottava) e <b>Sax2</b> (baritono, fino al La grave)</td>
+            <td class="col-b"><span class="mk no" aria-hidden="true">○</span>Solo ±2 o ±3 ottave</td>
+          </tr>
+          <tr>
+            <th scope="row">Antirimbalzo delle chiavi</th>
+            <td class="col-a">Key Delay <span class="num">0–10</span></td>
+            <td class="col-b">Key Delay <span class="num">0–64</span>, default 36 — scala più fine</td>
+          </tr>
+          <tr>
+            <th scope="row">Scorciatoie sulle chiavi</th>
+            <td class="col-a"><b>Scene Shortcut</b>: tenendo il pulsante SCENE, le chiavi 1–8 richiamano le scene utente del banco corrente; le chiavi E♭ e C scorrono i numeri di scena</td>
+            <td class="col-b">Cambio patch e preferiti dai 3 pulsanti Assign</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="extra">
+    <h2>08 · Harmonizer, drone, looper e affini</h2>
+    <div class="prose">
+      <p class="lede">Nessuno dei due ha una loop station o un registratore di frase: va detto subito, perché è la domanda che si fa più spesso. Sull'armonizzatore invece la differenza è secca — l'AE-20 ce l'ha, il Diosynth no.</p>
+    </div>
+    <div class="tablewrap">
+      <table class="tri">
+        <thead>
+          <tr><th scope="col">Funzione</th><th scope="col" class="col-a">Aerophone AE-20</th><th scope="col" class="col-b">ASM Diosynth</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Armonizzatore</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span><b>Fino a 4 voci di armonia</b> a intervallo fisso, da un'ottava sotto a un'ottava sopra con tutti i semitoni intermedi. Attivabile con <b>Harmony Sw</b> da un controller o via <code>CC28</code>. Impostazione globale o per scena<span class="path">solo AE-30: Intelligent Harmony con scala e tonalità, e Harmony Tune</span></td>
+            <td class="col-b"><span class="mk no" aria-hidden="true">○</span><b>Nessuna funzione di armonia</b> documentata. Esistono patch di categoria CHORD in cui le note d'accordo sono programmate nel suono, e il joystick può togliere le note d'accordo lasciando la melodia</td>
+          </tr>
+          <tr>
+            <th scope="row">Armonia intelligente sulla scala</th>
+            <td class="col-a"><span class="mk no" aria-hidden="true">○</span>Esclusiva AE-30</td>
+            <td class="col-b"><span class="mk no" aria-hidden="true">○</span>Assente</td>
+          </tr>
+          <tr>
+            <th scope="row">Loop station / registratore</th>
+            <td class="col-a"><span class="mk no" aria-hidden="true">○</span><b>Assente.</b> Come sostituto parziale: l'LFO a 16 step e il Partial Delay generano passaggi ritmici da un solo tasto; con <code>Start/Stop</code> si comanda un sequencer esterno</td>
+            <td class="col-b"><span class="mk no" aria-hidden="true">○</span><b>Assente.</b> Alcune patch SPLIT contengono droni o sequenze di note su cui suonare; gli LFO hanno modi step-sequencer</td>
+          </tr>
+          <tr>
+            <th scope="row">Drone / bordone</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span><b>Part Mode DRONE</b>: una part dedicata alle note gravi tenute, accesa con <b>Drone Sw</b> da un controller o via <code>CC29</code></td>
+            <td class="col-b"><span class="mk part" aria-hidden="true">◐</span>Nessuna funzione drone di sistema; droni presenti come suoni all'interno di alcune patch SPLIT</td>
+          </tr>
+          <tr>
+            <th scope="row">Layer e split</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span>Fino a <b>4 part</b> con Key Range e fade, Velocity Range e fade, e <b>X-Fade</b> (<code>CC30</code>) per incrociare i suoni con un controller in tempo reale</td>
+            <td class="col-b"><span class="mk yes" aria-hidden="true">●</span><b>2 part</b> in layer o split. Il punto di split è programmato nella patch (tipicamente due ottave basse + tre alte); si edita in Manager</td>
+          </tr>
+          <tr>
+            <th scope="row">Unisono / detune</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span><b>Unison</b> con Size <span class="num">2–8</span> voci e Detune <span class="num">0–100</span>, commutabile in tempo reale con <b>Unison Sw</b></td>
+            <td class="col-b"><span class="mk part" aria-hidden="true">◐</span>Non esposto come funzione: si ottiene con i due oscillatori WaveScan e le due part</td>
+          </tr>
+          <tr>
+            <th scope="row">Portamento / glide</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span>Portamento con Mode Normal/Legato, Type Rate/Time, Time <span class="num">0–1023</span>, curva LIN/EXP-L/EXP-H e Start Pitch/Note; Legato con <b>Retrigger Interval</b> <span class="num">Off, 0–12</span>. Attivabile dall'esterno con <code>CC65</code> e <code>CC5</code></td>
+            <td class="col-b"><span class="mk yes" aria-hidden="true">●</span><b>Glide on/off</b> e <b>Glide Rate</b> assegnabili direttamente a pulsanti, pad, gyro o joystick — più immediato dal vivo</td>
+          </tr>
+          <tr>
+            <th scope="row">Growl</th>
+            <td class="col-a"><span class="mk part" aria-hidden="true">◐</span>Dipende dalla scena: <code>CC4</code> e <code>CC18</code> pilotano growl sui tone SuperNATURAL, non è una funzione generale</td>
+            <td class="col-b"><span class="mk yes" aria-hidden="true">●</span><b>Funzione di sistema</b>: ring mod con terzo oscillatore, 15 modalità, assegnabile a pad, gyro o joystick su qualunque patch</td>
+          </tr>
+          <tr>
+            <th scope="row">Nota tenuta senza soffiare</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span><b>Hold Mode</b>: Breath (soffi una volta, la nota resta; si interrompe inspirando) oppure Key</td>
+            <td class="col-b"><span class="mk no" aria-hidden="true">○</span>Non documentato</td>
+          </tr>
+          <tr>
+            <th scope="row">Preferiti</th>
+            <td class="col-a"><b>12</b> scene preferite in sequenza, richiamabili con la manopola o da un controller</td>
+            <td class="col-b"><b>128</b> patch preferite, con app <b>Diosynth Live</b> per iOS e Android per costruire scalette</td>
+          </tr>
+          <tr>
+            <th scope="row">Percussioni</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span>Una delle 4 part è una <b>part batteria</b> con drum kit ZEN-Core (solo preset)</td>
+            <td class="col-b"><span class="mk no" aria-hidden="true">○</span>Nessuna part batteria</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="intonazione">
+    <h2>09 · Intonazione, scale, trasposizione</h2>
+    <div class="prose">
+      <p class="lede">Il Diosynth è chiaramente più ambizioso: circa settanta scale, comprese divisioni microtonali a 19 e 31 toni, contro le dieci temperature dell'AE-20.</p>
+    </div>
+    <div class="tablewrap">
+      <table class="tri">
+        <thead>
+          <tr><th scope="col">Parametro</th><th scope="col" class="col-a">Aerophone AE-20</th><th scope="col" class="col-b">ASM Diosynth</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Master tuning</th>
+            <td class="col-a"><span class="num">415,3 – 466,2 Hz</span></td>
+            <td class="col-b"><span class="num">380 – 500 Hz</span>, globale o per patch</td>
+          </tr>
+          <tr>
+            <th scope="row">Trasposizione</th>
+            <td class="col-a"><span class="num">−5 (G) … 0 (C) … +6 (F♯)</span>, con modo System o Scene. Assegnabile a un controller come Transpose ±</td>
+            <td class="col-b"><span class="num">−11 (C♯) … +11 (B)</span>, globale o per patch</td>
+          </tr>
+          <tr>
+            <th scope="row">Ottave</th>
+            <td class="col-a">Scene Octave Shift <span class="num">±3</span> + Part Octave Shift <span class="num">±3</span> + Tone Octave Shift <span class="num">±3</span></td>
+            <td class="col-b">Patch Octave <span class="num">±3</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Scale</th>
+            <td class="col-a"><b>10 tipi</b>: Custom, Equal, Just Major, Just Minor, Pitagorica, Kirnberger, Meantone, Werckmeister, Arabic 1, Arabic 2 — con Scale Tune Key e regolazione fine <span class="num">−64…+63</span> sulle 12 note. Attivabile con <b>Scale Tune Sw</b> o <code>CC31</code></td>
+            <td class="col-b"><b>Circa 70 scale</b>: modali e jazz (Bebop, Mixolydian, Lydian Aug, Melodic Minor…), etniche (Hirajoshi, In, Insen, Koto, Persian, Gypsy, Pelog/Slendro, India Raga, Chinese Dizi…), storiche (Meantone, Bendeler Well Tempered, W. Carlos Harmonic, Archytas…), microtonali (<b>1/4 Tone, 19 Tone, 31 Tone</b>, Bohlen 11-tone, Partch 43 Note, Hexany, Dekany, Eikosany) + <b>User Scale a 8 note</b></td>
+          </tr>
+          <tr>
+            <th scope="row">Intonazione dell'armonia</th>
+            <td class="col-a"><span class="mk part" aria-hidden="true">◐</span>Le note di armonia seguono la scala; <b>Harmony Tune</b> (Scale Tune o Just) è esclusiva AE-30</td>
+            <td class="col-b"><span class="mk no" aria-hidden="true">○</span>Non applicabile: nessun armonizzatore</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="sistema">
+    <h2>10 · Memoria, editing, connessioni, alimentazione</h2>
+    <div class="tablewrap">
+      <table class="tri">
+        <thead>
+          <tr><th scope="col">Aspetto</th><th scope="col" class="col-a">Aerophone AE-20</th><th scope="col" class="col-b">ASM Diosynth</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Memoria</th>
+            <td class="col-a">Oltre <b>260 scene preset</b> · <b>600 scene utente</b> (12 banchi × 50) · 12 preferiti</td>
+            <td class="col-b"><b>768 locazioni</b> (6 banchi × 128) · 128 preferiti · reset ai preset o inizializzazione totale</td>
+          </tr>
+          <tr>
+            <th scope="row">Editing profondo</th>
+            <td class="col-a">App <b>Aerophone Pro Editor</b> per iOS e Android, via Bluetooth MIDI. Sullo strumento si regolano sistema, assign, MIDI e le profondità d'effetto</td>
+            <td class="col-b"><b>Diosynth Manager</b> per Windows e macOS, via USB MIDI (serve la banda dell'USB). Sullo strumento si regolano EQ, tipo e 2 parametri d'effetto, send/return e livelli</td>
+          </tr>
+          <tr>
+            <th scope="row">Backup</th>
+            <td class="col-a"><span class="mk yes" aria-hidden="true">●</span>Su <b>chiavetta USB</b> collegata alla porta USB-C, in modalità di avvio dedicata: System Backup/Restore, Scene Backup/Restore, formattazione FAT32, import di tone e SOUND PACK</td>
+            <td class="col-b"><span class="mk part" aria-hidden="true">◐</span>Solo tramite <b>Diosynth Manager</b>. Nessuna porta host per chiavette</td>
+          </tr>
+          <tr>
+            <th scope="row">MIDI</th>
+            <td class="col-a">USB-C (MIDI + audio) e <b>Bluetooth LE MIDI</b>. <b>Nessuna presa DIN.</b> Canale di trasmissione 1–16, bank select e program change per scena, MIDI Speed <span class="num">1–15 ms</span></td>
+            <td class="col-b">USB-C (MIDI + audio), <b>Bluetooth MIDI</b> e <b>DIN IN + OUT a 5 poli</b>. Rx channel 1–16 o Omni, Tx 1–16, Program Change in ingresso e uscita, Local On/Off, Panic</td>
+          </tr>
+          <tr>
+            <th scope="row">Audio</th>
+            <td class="col-a">OUTPUT stereo jack 6,35 mm, PHONES 3,5 mm, altoparlanti integrati, Output Mode stereo o mono, Speaker Setting Off/On/Auto. Bluetooth <b>audio solo in ingresso</b> (A2DP, SBC). Audio USB con driver Roland (il driver generico è solo MIDI)</td>
+            <td class="col-b">LINE OUT jack 6,35 mm TS o TRS, PHONES 3,5 mm, altoparlante integrato, due volumi separati. Bluetooth <b>audio solo in ingresso</b> con livello regolabile. <b>Audio USB in e out</b> con livelli separati, plug-and-play senza driver</td>
+          </tr>
+          <tr>
+            <th scope="row">Alimentazione</th>
+            <td class="col-a">Alimentatore DC 5,7 V oppure <b>6 batterie AA Ni-MH</b> (~6 ore). <b>Non funziona da alimentazione USB</b> e non ricarica le batterie internamente</td>
+            <td class="col-b"><b>USB-C 5 V 2 A</b> (anche da power bank) oppure <b>2 batterie 18650 al litio</b> ricaricabili, non incluse</td>
+          </tr>
+          <tr>
+            <th scope="row">Peso e ingombro</th>
+            <td class="col-a"><span class="num">1100 g</span> · <span class="num">133 × 84 × 632 mm</span> · borsa morbida inclusa</td>
+            <td class="col-b"><span class="num">900 g</span> · <span class="num">83 × 67,3 × 697,5 mm</span> · valigia rigida e stand pieghevole inclusi</td>
+          </tr>
+          <tr>
+            <th scope="row">Dettagli utili</th>
+            <td class="col-a">Bluetooth ID 1–9 per distinguere più strumenti in sala, Display Off Time, contrasto, Auto Off Always On/5/30 min, tre lingue (inglese, giapponese, cinese), Edit Confirm</td>
+            <td class="col-b">Luce frontale che «respira» col volume con Theme Color, Sort By per ordinare le patch, Patch Protect, LCD Sleep, spegnimento automatico Off/5/10/15/30 min, due lingue (inglese, cinese)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="limiti">
+    <h2>11 · Cosa non si può fare</h2>
+    <div class="prose">
+      <p class="lede">La lista dei limiti reali, dedotti dai manuali. Dove il manuale non documenta una funzione l'ho segnalato come non documentato anziché come assente.</p>
+    </div>
+    <div class="limits">
+      <div class="limitbox a">
+        <h4>Limiti dell'AE-20</h4>
+        <ul>
+          <li><b>Nessun sensore di movimento e nessun thumb pad</b>: sono esclusive dell'AE-30, insieme a Motion Ctrl Mode, Bend Range Motion e i relativi assign.</li>
+          <li><b>Nessuna armonia intelligente</b>: solo intervalli fissi. Intelligent Harmony, Int. Hrmny Scale/Key e Harmony Tune sono AE-30.</li>
+          <li><b>Nessuna Wave Expansion e nessun campione utente</b>: i SOUND PACK si importano, i multisample e i sample utente no.</li>
+          <li><b>Nessuna loop station</b> e nessun sequencer interno oltre all'LFO a step.</li>
+          <li><b>Nessuna presa MIDI DIN</b> e nessuna ricezione di clock MIDI per sincronizzare gli effetti a tempo.</li>
+          <li><b>Non si alimenta via USB</b> e non ricarica le batterie inserite.</li>
+          <li>Un solo insert per tone e uno per scena: <b>non si concatenano due MFX</b> sullo stesso tone.</li>
+          <li>I tone SuperNATURAL e i drum kit sono <b>solo preset</b>: non si editano come i tone ZEN-Core.</li>
+          <li>L'editing di scene, tone ed effetti <b>richiede l'app su smartphone</b>: sullo strumento si arriva solo alle profondità e agli on/off.</li>
+          <li>Bluetooth audio <b>solo in ingresso</b>: non si esce su cuffie o casse Bluetooth.</li>
+        </ul>
+      </div>
+      <div class="limitbox b">
+        <h4>Limiti del Diosynth</h4>
+        <ul>
+          <li><b>Nessun armonizzatore.</b> Non c'è modo di aggiungere voci di armonia a intervallo dato; si usano patch con accordi programmati.</li>
+          <li><b>Nessuna loop station</b> e nessun registratore di frase.</li>
+          <li><b>Nessuna funzione drone di sistema</b>: il drone esiste solo dentro alcune patch.</li>
+          <li><b>Un solo bersaglio per controller</b> a livello globale, scelto da liste di cinque o sei voci. Le assegnazioni multiple passano dalla matrice, cioè dal computer.</li>
+          <li><b>Nessuna scalatura in/out né curve per assegnazione</b>: le 12 curve valgono solo per il fiato e sono globali.</li>
+          <li><b>Le chiavi di esecuzione non sono assegnabili</b> a funzioni: cambiano ruolo solo col modo di diteggiatura.</li>
+          <li><b>Solo 4 modi di diteggiatura</b>, nessun modo a una mano, nessun modo clarinetto o E-Wind, <b>nessuna diteggiatura utente</b> e nessuna ridefinizione della singola chiave.</li>
+          <li><b>Nessun modo d'ottava compatibile sax</b> (equivalente di Sax1/Sax2) e nessun accesso al La grave da baritono.</li>
+          <li><b>Nessuna part batteria</b>, 2 part contro 4.</li>
+          <li><b>Nessun hold</b> per tenere la nota senza soffiare, non documentato.</li>
+          <li><b>Nessun backup su chiavetta USB</b>: dipende da Diosynth Manager.</li>
+          <li>Sullo strumento ogni effetto espone <b>solo 2 parametri</b>; l'EQ mostra 4 gain su 6 bande reali.</li>
+          <li>Il gyro legge <b>un solo asse</b> (inclinazione verso l'alto), contro i due assi dell'AE-30.</li>
+          <li>Bluetooth audio <b>solo in ingresso</b>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>Nota sul metodo.</strong> Tutti i dati vengono dai quattro documenti nella cartella. Dove la Parameter Guide è condivisa tra AE-30 e AE-20 ho tenuto conto dei marcatori di esclusività: le funzioni contrassegnate <span class="m">AE-30</span> nel documento originale sono elencate qui come assenti sull'AE-20. Il manuale del Diosynth documenta l'editing di superficie e rimanda a Diosynth Manager per la programmazione profonda: dove le liste non sono pubblicate l'ho scritto invece di stimarle.</p>
+    <p class="src">AE-20_eng02_W.pdf · AE-30_AE-20_Parameter_Guide_eng07_W.pdf (rev. 07) · AE-20_Scene_List_multi05_W.pdf · Diosynth_Owners_Manual_1.0.2.pdf</p>
+  </footer>
+
+</div>

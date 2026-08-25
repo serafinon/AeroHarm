@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Interfaccia USB Audio (classe 1), sottoclasse MIDIStreaming (3):
+     e' cosi' che si presenta l'AE-20 con USB Driver = Generic. -->
+<resources>
+    <usb-device class="1" subclass="3" />
+    <usb-device class="0" />
+</resources>

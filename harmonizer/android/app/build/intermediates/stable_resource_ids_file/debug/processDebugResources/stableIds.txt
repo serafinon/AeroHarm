@@ -1,0 +1,5 @@
+harmonizer.app:string/app_name = 0x7f040000
+harmonizer.app:xml/usb_midi = 0x7f050000
+harmonizer.app:mipmap/ic_launcher = 0x7f030000
+harmonizer.app:drawable/ic_glifo = 0x7f020000
+harmonizer.app:color/ic_bg = 0x7f010000

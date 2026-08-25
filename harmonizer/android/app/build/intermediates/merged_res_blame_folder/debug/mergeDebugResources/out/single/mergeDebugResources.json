@@ -1,0 +1,18 @@
+[
+    {
+        "merged": "/Users/niccoloserafino/.gradle/daemon/8.12/harmonizer.app-debug-4:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "/Users/niccoloserafino/.gradle/daemon/8.12/harmonizer.app-main-6:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "harmonizer.app-debug-4:/xml_usb_midi.xml.flat",
+        "source": "harmonizer.app-main-6:/xml/usb_midi.xml"
+    },
+    {
+        "merged": "/Users/niccoloserafino/.gradle/daemon/8.12/harmonizer.app-debug-4:/mipmap-anydpi_ic_launcher.xml.flat",
+        "source": "/Users/niccoloserafino/.gradle/daemon/8.12/harmonizer.app-main-6:/mipmap-anydpi/ic_launcher.xml"
+    },
+    {
+        "merged": "/Users/niccoloserafino/.gradle/daemon/8.12/harmonizer.app-debug-4:/drawable_ic_glifo.xml.flat",
+        "source": "/Users/niccoloserafino/.gradle/daemon/8.12/harmonizer.app-main-6:/drawable/ic_glifo.xml"
+    }
+]
