@@ -39,6 +39,7 @@ class FxView(private val act: Activity) {
     var tipo: FxTipo = FxTipo.HARMONIZER
     var harmCfg: HarmonizerCfg = HarmonizerCfg()
     var arpCfg: ArpCfg = ArpCfg()
+    var voicingCfg: VoicingCfg = VoicingCfg()
     var nomeBrano: String = ""
 
     /** Chiamata a ogni modifica: il chiamante salva e applica al runtime. */
@@ -51,6 +52,10 @@ class FxView(private val act: Activity) {
     private var slitter: SlitterGradi? = null
     private var lblGradi: TextView? = null
     private var lblSpiegazione: TextView? = null
+
+    // riferimenti del pannello voicing
+    private var lblTipoVoicing: TextView? = null
+    private var lblPassaggio: TextView? = null
 
     private val d get() = act.resources.displayMetrics
 
@@ -69,7 +74,7 @@ class FxView(private val act: Activity) {
         root.addView(etichetta("EFFETTO — uno alla volta, entrambi memorizzati"))
 
         val tipi = FxTipo.values()
-        grigliaEffetti = Griglia(tipi.map { it.etichetta }, 2, tipi.indexOf(tipo),
+        grigliaEffetti = Griglia(tipi.map { it.etichetta }, tipi.size, tipi.indexOf(tipo),
                                  grande = true) { i ->
             if (tipo != tipi[i]) {
                 tipo = tipi[i]
@@ -89,7 +94,12 @@ class FxView(private val act: Activity) {
     private fun aggiornaPannello() {
         pannello.removeAllViews()
         slitter = null; lblGradi = null; lblSpiegazione = null
-        if (tipo == FxTipo.HARMONIZER) pannelloHarmonizer() else pannelloArpeggiatore()
+        lblTipoVoicing = null; lblPassaggio = null
+        when (tipo) {
+            FxTipo.HARMONIZER -> pannelloHarmonizer()
+            FxTipo.ARPEGGIATOR -> pannelloArpeggiatore()
+            FxTipo.VOICING -> pannelloVoicing()
+        }
     }
 
     // ---------------------------------------------------------- harmonizer
@@ -251,6 +261,99 @@ class FxView(private val act: Activity) {
         }, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
     }
 
+    // ------------------------------------------------------------- voicing
+
+    private fun pannelloVoicing() {
+        voicingCfg.normalizza()
+        val col = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL }
+
+        col.addView(etichetta("VOCI — massimo, non un numero fisso. Tu sei la lead, sopra"))
+        col.addView(Griglia((1..MAX_VOCI_VOICING).map { "$it" }, 4, voicingCfg.voci - 1) { i ->
+            voicingCfg.voci = i + 1
+            onCambia?.invoke()
+        }.vista)
+
+        col.addView(etichetta("TIPO DI VOICING"))
+        val tipi = TipoVoicing.values()
+        col.addView(Griglia(tipi.map { it.etichetta }, 2,
+            tipi.indexOf(voicingCfg.tipo)) { i ->
+            voicingCfg.tipo = tipi[i]
+            aggiornaTipoVoicing()
+            onCambia?.invoke()
+        }.vista)
+
+        lblTipoVoicing = TextView(act).apply {
+            setTextColor(Pal.dim); textSize = 12f
+            setPadding(4, 0, 4, (6 * d.density).toInt())
+        }
+        col.addView(lblTipoVoicing)
+
+        col.addView(etichetta("APERTURA — distanza fra le voci"))
+        col.addView(Griglia(NOMI_APERTURA.toList(), 3, voicingCfg.apertura) { i ->
+            voicingCfg.apertura = i
+            aggiornaTipoVoicing()
+            onCambia?.invoke()
+        }.vista)
+
+        col.addView(etichetta("REGISTRO — nota piu' bassa concessa"))
+        col.addView(Griglia(NOMI_REGISTRO.toList(), 4, voicingCfg.registro) { i ->
+            voicingCfg.registro = i
+            onCambia?.invoke()
+        }.vista)
+
+        col.addView(etichetta("QUANDO LA TUA NOTA NON E' NELL'ACCORDO"))
+        val modi = ModoPassaggio.values()
+        col.addView(Griglia(modi.map { it.etichetta }, 2,
+            modi.indexOf(voicingCfg.passaggio)) { i ->
+            voicingCfg.passaggio = modi[i]
+            aggiornaPassaggio()
+            onCambia?.invoke()
+        }.vista)
+
+        lblPassaggio = TextView(act).apply {
+            setTextColor(Pal.dim); textSize = 12f
+            setPadding(4, 0, 4, (6 * d.density).toInt())
+        }
+        col.addView(lblPassaggio)
+
+        col.addView(etichetta("SOGLIA — sotto tieni, sopra rivoicizza"))
+        col.addView(Griglia(SOGLIE_PASSAGGIO.map { "$it ms" }, 4, voicingCfg.soglia) { i ->
+            voicingCfg.soglia = i
+            onCambia?.invoke()
+        }.vista)
+
+        col.addView(TextView(act).apply {
+            text = "Le voci escono dai gradi dell'accordo previsti dal tipo, stanno " +
+                   "sempre sotto la tua nota e seguono il tuo fiato. Due voci non " +
+                   "possono finire sulla stessa nota: se non c'e' posto suonano meno " +
+                   "note. Oltre 4 voci le parti vanno in POLY — piu' note sulla " +
+                   "stessa parte — e le voci riattaccano invece di legare."
+            setTextColor(Pal.dim); textSize = 12f
+            setPadding(4, (18 * d.density).toInt(), 4, 0)
+        })
+
+        pannello.addView(ScrollView(act).apply {
+            isVerticalScrollBarEnabled = false
+            addView(col)
+        }, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
+
+        aggiornaTipoVoicing()
+        aggiornaPassaggio()
+    }
+
+    private fun aggiornaTipoVoicing() {
+        val t = voicingCfg.tipo
+        val prescrive = t.passoFisso > 0 || t.passoPrimo > 0
+        lblTipoVoicing?.text = t.descrizione +
+            "  Tipiche: ${t.vociTipiche} voci." +
+            (if (prescrive) " Questo tipo decide da se' la distanza fra le voci: " +
+                            "l'apertura conta poco." else "")
+    }
+
+    private fun aggiornaPassaggio() {
+        lblPassaggio?.text = voicingCfg.passaggio.descrizione
+    }
+
     private fun indicePiuVicino(valori: IntArray, v: Int): Int {
         var best = 0
         for (i in valori.indices)
@@ -311,10 +414,10 @@ class FxView(private val act: Activity) {
 
         private fun creaChip(testo: String, idx: Int) = TextView(act).apply {
             text = testo
-            textSize = if (grande) 16f else 14f
+            textSize = if (grande) 14f else 14f
             gravity = Gravity.CENTER
             typeface = Typeface.DEFAULT_BOLD
-            val v = ((if (grande) 20 else 14) * d.density).toInt()
+            val v = ((if (grande) 18 else 14) * d.density).toInt()
             setPadding(8, v, 8, v)
             stile(this, idx == selezionato)
             setOnClickListener {

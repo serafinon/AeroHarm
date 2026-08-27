@@ -14,13 +14,22 @@ import harmonizer.core.*
 
 enum class FxTipo(val etichetta: String) {
     HARMONIZER("harmonizer"),
-    ARPEGGIATOR("arpeggiator");
+    ARPEGGIATOR("arpeggiator"),
+    VOICING("voicing");
 
     companion object {
-        fun da(codice: String): FxTipo = if (codice == "a") ARPEGGIATOR else HARMONIZER
+        fun da(codice: String): FxTipo = when (codice) {
+            "a" -> ARPEGGIATOR
+            "v" -> VOICING
+            else -> HARMONIZER
+        }
     }
 
-    fun codice(): String = if (this == ARPEGGIATOR) "a" else "h"
+    fun codice(): String = when (this) {
+        ARPEGGIATOR -> "a"
+        VOICING -> "v"
+        HARMONIZER -> "h"
+    }
 }
 
 /** Una parte per voce, dalla 2 in avanti: la 1 e' la melodia. Spec §3. */

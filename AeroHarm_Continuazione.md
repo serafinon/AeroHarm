@@ -58,9 +58,9 @@ java -cp "out:$K/lib/kotlin-stdlib.jar" harmonizer.core.DemoScaleKt
 Altri banchi: `DemoKt` (verifiche musicali), `DemoEstraneeKt` (note fuori scala),
 `BenchKt` (costo per nota).
 
-Banco degli **effetti** — armonizzatore a più voci e arpeggiatore (doc §14).
-Serve anche `Fx.kt`, `Runtime.kt` e `Harmonizer.kt`, che di Android non sanno
-nulla:
+Banco degli **effetti** — armonizzatore a più voci, arpeggiatore e voicer
+(doc §14, §15). Serve anche `Fx.kt`, `Voicing.kt`, `Runtime.kt` e
+`Harmonizer.kt`, che di Android non sanno nulla:
 
 ```bash
 cd ~/Downloads/aerofoni/harmonizer
@@ -68,6 +68,7 @@ K="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc"
 java -cp "$K/lib/kotlin-compiler.jar" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler \
   -nowarn -d outfx core/src/Harmony.kt core/src/Scales.kt core/src/DemoFx.kt \
   android/app/src/main/java/harmonizer/app/Fx.kt \
+  android/app/src/main/java/harmonizer/app/Voicing.kt \
   android/app/src/main/java/harmonizer/app/Runtime.kt \
   android/app/src/main/java/harmonizer/app/Harmonizer.kt
 java -cp "outfx:$K/lib/kotlin-stdlib.jar" harmonizer.app.DemoFxKt
@@ -195,7 +196,28 @@ Attenzione: il bend è **per canale**, quindi ogni voce deve stare su un canale
 proprio. Se il test 3 ha mostrato meno canali disponibili del previsto, ridurre
 le voci di conseguenza.
 
-### Test 5 — polifonia (non nel wizard, da fare a mano)
+### Test 5 e 6 — polifonia e voicing (ora nel wizard)
+
+Doc §15.5. Sono gli ultimi due passi della procedura guidata.
+
+**Test 5**: l'app manda `CC127` sulla parte 2 e poi quattro note insieme.
+
+| Esito | Significato | Azione |
+|---|---|---|
+| **sì** | la parte accetta la polifonia via CC | niente. Il voicer può superare le quattro voci |
+| **no** | la parte resta mono | controllare `Unison Switch` = Off (con ON forza il mono, doc §2.5). Se non basta, preparare la scena con `Mono/Poly` = POLY, oppure tenere il voicer a 4 voci — una per parte |
+
+**Test 6**: otto note di voicing, due per parte su ch2–ch5, distribuite come le
+distribuisce l'effetto.
+
+| Esito | Azione |
+|---|---|
+| **sì** | il massimo di 8 voci è utilizzabile |
+| **no** | contare quante se ne sentono e abbassare il massimo nella vista effetti. Annotare il numero qui |
+
+Alla fine il wizard rimette `CC126`: il mono serve agli altri due effetti.
+
+### Test 7 — polifonia dell'armonizzatore (non nel wizard, da fare a mano)
 
 Non documentata da Roland. Suonare tenendo più note con tutte le voci attive e
 verificare a quante voci simultanee le note iniziano a essere tagliate. Impostare
@@ -243,13 +265,23 @@ li deve conoscere.
    manda anche il Release Value.
 8. **La voce conserva il proprio grado alla riaccordatura**, e se la nota
    risultante è invariata non si invia nulla.
-9. **L'arpeggio manda il note-off prima del note-on.** È l'unico modo di ottenere
+9. **Il voicer manda solo la differenza fra i due insiemi.** Una nota che c'era
+   e c'è ancora non si riarticola, qualunque posizione occupi nel nuovo
+   voicing. Confrontare posizione per posizione fa riattaccare quattro note per
+   spostarne una: vedi doc §15.3.
+10. **Nel voicer nessuna voce sta sopra o pari alla tua nota**, e due voci non
+    stanno mai sulla stessa nota. La prima è la definizione di lead, la seconda
+    è garantita dall'ordine strettamente discendente della DP — non da una
+    deduplica dopo.
+11. **L'arpeggio manda il note-off prima del note-on.** È l'unico modo di ottenere
    un riattacco con `Legato Retrigger Interval = OFF`, che all'armonia serve
    invece per spostarsi senza attaccare. Invertire l'ordine trasforma
    l'arpeggio in un glissando.
-10. **Un effetto solo alla volta, entrambi memorizzati.** Due catene in serie
+12. **Un effetto solo alla volta, tutti memorizzati.** Due catene in serie
     raddoppiano il lavoro sul percorso della nota; le configurazioni però
     stanno tutte nel brano, e cambiare effetto non ne perde nessuna.
+13. **`CC126/127` si inviano solo sul cambio di effetto**, non a ogni tocco, e
+    solo sui canali 2–5.
 
 ---
 
@@ -257,8 +289,14 @@ li deve conoscere.
 
 - `minDurationGate` e `breathGate` esistono in `HarmConfig` ma non hanno
   interfaccia: aggiungere due controlli in una schermata impostazioni.
-- Nella vista effetti si configurano voci, modo e gradi; **registro**
-  (`voiceLow`/`voiceHigh`, oggi 48–96) e canali restano nel codice.
+- Nella vista effetti si configurano voci, modo e gradi; il **registro
+  dell'armonizzatore** (`voiceLow`/`voiceHigh`, oggi 48–96) e i canali restano
+  nel codice. Il voicer ha il suo registro nell'interfaccia.
+- **Rootless auto**: alternare A e B scegliendo quella che si voice-leada
+  meglio. Oggi la scelta è manuale, e con la lead sul grado alto la struttura è
+  costretta un'ottava sotto (doc §15.6).
+- Il voicer non ha ancora una prova a schermo sul telefono: compila e passa il
+  banco su JVM, ma il pannello non è stato guardato.
 - Nei modi non fissi ogni voce ha il proprio intervallo di gradi, quindi con
   fasce disgiunte non si incrociano. Se invece si sovrappongono di proposito,
   due voci possono capitare sullo stesso grado: ognuna decide da sé, non c'è

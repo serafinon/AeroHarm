@@ -26,9 +26,17 @@ data class HarmConfig(
     ),
     /** Quale effetto e' attivo. Uno solo alla volta: spec §14. */
     var fx: FxTipo = FxTipo.HARMONIZER,
-    /** Configurazioni dei due effetti: memorizzate entrambe, sempre. */
+    /** Configurazioni di tutti gli effetti: memorizzate sempre, tutte. */
     var harm: HarmonizerCfg = HarmonizerCfg(),
     var arp: ArpCfg = ArpCfg(),
+    var voicing: VoicingCfg = VoicingCfg(),
+    /**
+     * Imposta Mono/Poly via CC126/127 sulle parti di armonia. Serve al
+     * voicing quando le voci sono piu' delle parti disponibili, e a
+     * ripristinare il mono quando si torna agli altri effetti.
+     * [DA VERIFICARE] con lo strumento.
+     */
+    var impostaPolifonia: Boolean = true,
     /** Registro delle voci di armonia e dell'arpeggio. */
     var voiceLow: Int = 48,
     var voiceHigh: Int = 96,
@@ -82,6 +90,18 @@ class Harmonizer(
     private var arpSeqNota = -1
     private var arpSeqPasso = -2
 
+    // ---- stato del voicing ----
+    private val voicer = Voicer()
+    /** Nota in suono per ogni posizione strutturale del voicing, -1 se tace. */
+    private val vocNote = IntArray(MAX_VOCI_VOICING + 2) { -1 }
+    private var vocLead = -1
+    private var vocLeadPrec = -1
+    private var vocLeadVel = 100
+    private var vocLeadAt = 0L
+    private var vocRifatto = false
+    private var vocCanali = 1
+    private var polyAttiva = false
+
     /** Statistiche per la diagnostica. */
     var lastProcessNanos = 0L
         private set
@@ -97,13 +117,16 @@ class Harmonizer(
         out.noteOn(config.leadChannel, note, vel)
 
         val slot = tracker.open(note, vel)
-        if (config.fx == FxTipo.ARPEGGIATOR) {
-            // l'arpeggio non nasce qui: parte sulla griglia, nel tick
-            arpSorgente = note
-            arpVel = vel
-            arpSeqNota = -1
-        } else if (slot >= 0 && !muted && lastBreath >= config.breathGate) {
-            emitHarmony(slot, note, vel, now)
+        when {
+            config.fx == FxTipo.ARPEGGIATOR -> {
+                // l'arpeggio non nasce qui: parte sulla griglia, nel tick
+                arpSorgente = note
+                arpVel = vel
+                arpSeqNota = -1
+            }
+            config.fx == FxTipo.VOICING -> onLeadVoicing(note, vel, now)
+            slot >= 0 && !muted && lastBreath >= config.breathGate ->
+                emitHarmony(slot, note, vel, now)
         }
         lastProcessNanos = System.nanoTime() - t0
     }
@@ -125,12 +148,22 @@ class Harmonizer(
 
         // arpeggiatore: si passa a un'altra nota tenuta, se c'e'; altrimenti tace
         if (config.fx == FxTipo.ARPEGGIATOR && note == arpSorgente) {
-            var altra = -1
-            for (i in 0 until tracker.capacity)
-                if (tracker.isActive(i)) { altra = tracker.melodyAt(i); break }
-            arpSorgente = altra
+            arpSorgente = altraTenuta()
             arpSeqNota = -1
-            if (altra < 0) spegniArp()
+            if (arpSorgente < 0) spegniArp()
+        }
+
+        // voicing: la lead e' l'ultima nota tenuta, come sull'arpeggiatore
+        if (config.fx == FxTipo.VOICING && note == vocLead) {
+            val altra = altraTenuta()
+            vocLeadPrec = vocLead
+            vocLead = altra
+            if (altra < 0) spegniVoicing()
+            else {
+                vocLeadAt = now
+                vocRifatto = false
+                if (!muted) emettiVoicing(now)
+            }
         }
         lastProcessNanos = System.nanoTime() - t0
     }
@@ -184,7 +217,7 @@ class Harmonizer(
     fun setMuted(m: Boolean) {
         if (m == muted) return
         muted = m
-        if (m) { flushHarmony(); spegniArp() }
+        if (m) { flushHarmony(); spegniArp(); spegniVoicing() }
     }
 
     /**
@@ -209,6 +242,7 @@ class Harmonizer(
         transport.stop()
         flushHarmony()
         spegniArp()
+        spegniVoicing()
         muted = false
         lastStepIndex = -1
         arpUltimoStep = Long.MIN_VALUE
@@ -231,16 +265,27 @@ class Harmonizer(
      * Con l'arpeggiatore attivo resta **una** parte, la 2: e' su quella che
      * viaggiano l'arpeggio, lo specchio dell'espressione e il bend.
      */
-    fun applicaFx(tipo: FxTipo, h: HarmonizerCfg, a: ArpCfg) {
+    fun applicaFx(tipo: FxTipo, h: HarmonizerCfg, a: ArpCfg,
+                  v: VoicingCfg = config.voicing) {
         flushHarmony()
         spegniArp()
-        h.normalizza(); a.normalizza()
+        spegniVoicing()
+        h.normalizza(); a.normalizza(); v.normalizza()
         config.fx = tipo
         config.harm = h
         config.arp = a
+        config.voicing = v
+        vocCanali = minOf(v.voci, PARTI_ARMONIA).coerceAtLeast(1)
         config.voices = if (tipo == FxTipo.ARPEGGIATOR)
             listOf(VoiceConfig("arpeggio", listOf(Degrees.UNISON), SelectionMode.FIXED,
                                config.voiceLow, config.voiceHigh, CANALE_VOCE_BASE))
+        else if (tipo == FxTipo.VOICING)
+            // una voce per parte finche' le parti bastano; oltre, piu' note
+            // sulla stessa parte, che e' l'unico modo di superare il quattro
+            List(vocCanali) { i ->
+                VoiceConfig("voicing ${i + 1}", listOf(Degrees.UNISON), SelectionMode.FIXED,
+                            config.voiceLow, config.voiceHigh, CANALE_VOCE_BASE + i)
+            }
         else List(h.voci) { i ->
             // a grado fisso ogni voce tiene il suo; negli altri modi ognuna
             // pesca nel **proprio** intervallo. L'insieme e' ruotato per voce:
@@ -254,6 +299,23 @@ class Harmonizer(
         for (s in states) s.reset()
         arpSeqNota = -1
         arpSeqPasso = -2
+        impostaPolifonia(tipo, v)
+    }
+
+    /**
+     * Le parti di armonia vanno in POLY solo quando il voicing chiede piu' voci
+     * delle parti disponibili; appena si torna agli altri effetti si rimette il
+     * MONO, che e' quello che il legato senza retrigger richiede (spec §5).
+     * Si invia solo sul cambio, non a ogni tocco.
+     */
+    private fun impostaPolifonia(tipo: FxTipo, v: VoicingCfg) {
+        if (!config.impostaPolifonia) return
+        val noteMax = v.voci + (if (v.tipo.raddoppiaLead) 1 else 0)
+        val serve = tipo == FxTipo.VOICING && noteMax > vocCanali
+        if (serve == polyAttiva) return
+        for (c in CANALE_VOCE_BASE until CANALE_VOCE_BASE + PARTI_ARMONIA)
+            out.cc(c, if (serve) 127 else 126, 0)
+        polyAttiva = serve
     }
 
     private fun flushHarmony() {
@@ -301,6 +363,7 @@ class Harmonizer(
      */
     fun tick(now: Long) {
         if (config.fx == FxTipo.ARPEGGIATOR) { tickArp(now); return }
+        if (config.fx == FxTipo.VOICING) { tickVoicing(now); return }
         if (!transport.running) return
         val q = transport.quarto(now)
         val idx = progression.stepIndexAt(q)
@@ -403,6 +466,167 @@ class Harmonizer(
         }
     }
 
+    // ------------------------------------------------------------- voicing
+
+    /**
+     * Spec §15. Qui il musicista e' la **lead**: le voci generate stanno
+     * sempre sotto la sua nota, e vengono dai gradi dell'accordo previsti dal
+     * tipo di voicing. Non serve ai soli — quello e' l'armonizzatore — ma agli
+     * stacchi di sezione e agli accompagnamenti.
+     */
+    private fun onLeadVoicing(note: Int, vel: Int, now: Long) {
+        vocLeadPrec = vocLead
+        vocLead = note
+        vocLeadVel = vel
+        vocLeadAt = now
+        vocRifatto = false
+        if (muted || lastBreath < config.breathGate) return
+
+        applyStep(transport.quarto(now))
+        val cfg = config.voicing
+        val fuori = voicer.estranea(note, passoCorrente(), cfg.tipo)
+        val muto = !qualcosaInSuono()
+
+        // niente da tenere: al primo attacco si costruisce comunque, anche se
+        // la nota e' di passaggio
+        if (!fuori || muto) { emettiVoicing(now); return }
+
+        when (cfg.passaggio) {
+            ModoPassaggio.RIVOICING -> emettiVoicing(now)
+            ModoPassaggio.PLANING -> planing()
+            ModoPassaggio.TIENI -> {}                 // il voicing resta fermo
+            ModoPassaggio.AUTO -> {}                  // decide la soglia, nel tick
+        }
+    }
+
+    /**
+     * Cambio di accordo con la lead tenuta, e scadenza della soglia nel modo
+     * automatico: sotto soglia sei di passaggio, sopra ti stai fermando.
+     */
+    private fun tickVoicing(now: Long) {
+        if (vocLead < 0 || muted) return
+
+        if (transport.running) {
+            val q = transport.quarto(now)
+            if (progression.stepIndexAt(q) != lastStepIndex) {
+                applyStep(q)
+                emettiVoicing(now)
+                return
+            }
+        }
+
+        val cfg = config.voicing
+        if (cfg.passaggio != ModoPassaggio.AUTO || vocRifatto) return
+        if ((now - vocLeadAt) / 1_000_000 < cfg.sogliaMs()) return
+        if (!voicer.estranea(vocLead, passoCorrente(), cfg.tipo)) return
+        vocRifatto = true
+        emettiVoicing(now)
+    }
+
+    /**
+     * Ricostruisce e manda **solo la differenza fra i due insiemi**: una nota
+     * che c'era e c'e' ancora non si riarticola, qualunque posizione occupi nel
+     * nuovo voicing.
+     *
+     * E' la differenza fra il movimento minimo calcolato e quello che si sente.
+     * Su `Dm7 -> G7` un rootless A tiene la `E` e sposta la `C` sulla `B`: se
+     * confrontassi posizione per posizione riattaccherei quattro note per
+     * spostarne una.
+     */
+    private fun emettiVoicing(now: Long) {
+        val lead = vocLead
+        if (lead < 0) { spegniVoicing(); return }
+        val passo = passoCorrente()
+        val n = voicer.costruisci(lead, passo, config.voicing, vocNote, vocLeadPrec)
+
+        // 1. spegni quello che non fa piu' parte dell'insieme
+        for (i in vocNote.indices) {
+            val v = vocNote[i]
+            if (v < 0) continue
+            if (!nelNuovoVoicing(v, n)) {
+                out.noteOff(canaleVoc(i), v)
+                vocNote[i] = -1
+            }
+        }
+        // 2. accendi quello che non c'era, su una posizione libera
+        for (k in 0 until n) {
+            val nuova = voicer.note[k]
+            if (nuova < 0 || inSuono(nuova)) continue
+            val slot = slotLibero()
+            if (slot < 0) continue
+            if (config.initialExpression > 0) sendCcThinned(canaleVoc(slot), 11,
+                config.initialExpression * config.expressionScalePercent / 100, now)
+            out.noteOn(canaleVoc(slot), nuova, vocLeadVel)
+            vocNote[slot] = nuova
+        }
+    }
+
+    private fun nelNuovoVoicing(nota: Int, n: Int): Boolean {
+        for (k in 0 until n) if (voicer.note[k] == nota) return true
+        return false
+    }
+
+    private fun inSuono(nota: Int): Boolean {
+        for (v in vocNote) if (v == nota) return true
+        return false
+    }
+
+    private fun slotLibero(): Int {
+        for (i in vocNote.indices) if (vocNote[i] < 0) return i
+        return -1
+    }
+
+    /**
+     * Planing: tutto il voicing si muove parallelo alla lead, anche fuori
+     * dall'accordo. E' il suono soli da big band, e l'unico modo che sospende
+     * la regola dei gradi — per questo e' una scelta dichiarata.
+     */
+    private fun planing() {
+        val d = vocLead - vocLeadPrec
+        if (d == 0 || vocLeadPrec < 0) return
+        for (i in vocNote.indices) {
+            val v = vocNote[i]
+            if (v < 0) continue
+            val nuova = (v + d).coerceIn(0, 127)
+            if (nuova == v) continue
+            out.noteOff(canaleVoc(i), v)
+            out.noteOn(canaleVoc(i), nuova, vocLeadVel)
+            vocNote[i] = nuova
+        }
+    }
+
+    private fun spegniVoicing() {
+        for (i in vocNote.indices) if (vocNote[i] >= 0) {
+            out.noteOff(canaleVoc(i), vocNote[i])
+            vocNote[i] = -1
+        }
+    }
+
+    private fun qualcosaInSuono(): Boolean {
+        for (v in vocNote) if (v >= 0) return true
+        return false
+    }
+
+    private fun canaleVoc(i: Int): Int =
+        CANALE_VOCE_BASE + (i % vocCanali.coerceAtLeast(1))
+
+    /** Il passo della progressione a cui il motore e' sintonizzato adesso. */
+    private fun passoCorrente(): ChordStep {
+        val steps = progression.steps
+        if (steps.isEmpty()) return ChordStep(Chord(0, ChordQuality.MAJ), Scales.IONICA, 4)
+        return steps[lastStepIndex.coerceIn(0, steps.size - 1)]
+    }
+
+    /** Un'altra nota ancora tenuta, per la priorita' all'ultima. */
+    private fun altraTenuta(): Int {
+        for (i in 0 until tracker.capacity)
+            if (tracker.isActive(i)) return tracker.melodyAt(i)
+        return -1
+    }
+
+    /** Le note del voicing in suono, col loro grado. Per il monitor. */
+    fun voicingInSuono(): String = voicer.descrizione(passoCorrente())
+
     // ------------------------------------------------------------ utilità
 
     private fun forwardCc(num: Int, value: Int, now: Long) {
@@ -427,7 +651,9 @@ class Harmonizer(
 
     fun panic() {
         spegniArp()
+        spegniVoicing()
         arpSorgente = -1
+        vocLead = -1
         for (i in 0 until tracker.capacity) tracker.close(i)
         for (ch in intArrayOf(config.leadChannel, *config.voices.map { it.channel }.toIntArray())) {
             out.cc(ch, 123, 0)

@@ -106,7 +106,7 @@ class MainActivity : Activity() {
         harm.progression = b.progressione
         harm.transport.bpm = b.bpm
         harm.transport.beatsPerBar = b.battiti
-        harm.applicaFx(b.fx, b.harmCfg, b.arpCfg)
+        harm.applicaFx(b.fx, b.harmCfg, b.arpCfg, b.voicingCfg)
         if (richiamaScena) b.scena?.let {
             midi.selezionaScena(harm.config.leadChannel, ScenaAE20.MSB, it.lsb(), it.numero)
             logLine("Scena AE-20: ${it.etichetta()}")
@@ -192,10 +192,11 @@ class MainActivity : Activity() {
             tipo = b.fx
             harmCfg = b.harmCfg
             arpCfg = b.arpCfg
+            voicingCfg = b.voicingCfg
             nomeBrano = b.nome
             onCambia = {
                 b.fx = tipo
-                harm.applicaFx(b.fx, b.harmCfg, b.arpCfg)
+                harm.applicaFx(b.fx, b.harmCfg, b.arpCfg, b.voicingCfg)
                 setlist.salva(this@MainActivity)
             }
         }.build()
@@ -594,11 +595,13 @@ class MainActivity : Activity() {
         "Test 2b — nota preceduta da CC11 (Expression) = 100.\nLa senti?" to { notaDiProva(1, 11, 100) },
         "Test 2c — nota preceduta da CC2 (Breath) = 100.\nLa senti?" to { notaDiProva(1, 2, 100) },
         "Test 3 — stessa nota su ch1, ch2, ch3, ch4, ch5.\nHai sentito TUTTI e cinque?" to { scanCanali() },
-        "Test 4 — due note sovrapposte sulla parte di armonia.\nHai sentito un NUOVO ATTACCO?" to { provaLegato(2) }
+        "Test 4 — due note sovrapposte sulla parte di armonia.\nHai sentito un NUOVO ATTACCO?" to { provaLegato(2) },
+        "Test 5 — POLY: mando CC127 sulla parte 2, poi quattro note insieme.\nLe senti tutte e QUATTRO?" to { provaPoly(2) },
+        "Test 6 — otto note di voicing, due per parte su ch2-ch5.\nLe senti tutte e OTTO?" to { provaVoicing() }
     )
 
     private val chiavi = listOf("MIDI Ctrl Sound On", "MIDI Ctrl Sound Off", "nota nuda",
-        "CC11", "CC2", "canali 1-5", "legato riattacca")
+        "CC11", "CC2", "canali 1-5", "legato riattacca", "poly su una parte", "otto voci")
 
     private fun avviaWizard() {
         wizardStep = -1; esiti.clear()
@@ -638,6 +641,15 @@ class MainActivity : Activity() {
         } + "\n")
         sb.append(if (esiti["legato riattacca"] == "no")
             "  Legato senza retrigger ok: via §7.1.\n" else "  Il legato riattacca: usa il bend, §7.2.\n")
+        sb.append(if (esiti["poly su una parte"] == "sì")
+            "  CC127 funziona: il voicing puo' superare le quattro voci.\n"
+        else "  La parte resta mono: massimo 4 voci nel voicing, una per parte.\n" +
+             "  Controlla Unison Switch = Off, e se serve prepara la scena in POLY.\n")
+        sb.append(if (esiti["otto voci"] == "sì")
+            "  Polifonia: otto voci passano.\n"
+        else "  Otto voci non passano: abbassa il massimo nel voicing.\n")
+        // si rimette il mono, che e' quello che serve all'armonizzatore
+        for (c in 2..5) midi.cc(c, 126, 0)
         lblDomanda.text = "Procedura conclusa. Risultati qui sotto."
         logLine(sb.toString())
     }
@@ -653,6 +665,34 @@ class MainActivity : Activity() {
             logLine("canale $c"); midi.cc(c, 11, 100); midi.noteOn(c, 72, 100)
             ui.postDelayed({ midi.noteOff(c, 72) }, 600)
         }, ((c - 1) * 800).toLong())
+    }
+
+    /** Poly su una parte: quattro note insieme sullo stesso canale. */
+    private fun provaPoly(ch: Int) {
+        val note = intArrayOf(60, 64, 67, 71)
+        midi.cc(ch, 127, 0)
+        midi.cc(ch, 11, 100)
+        for (n in note) midi.noteOn(ch, n, 100)
+        ui.postDelayed({ for (n in note) midi.noteOff(ch, n) }, 1500)
+    }
+
+    /**
+     * La polifonia con un voicing vero: otto note, due per parte, distribuite
+     * come le distribuisce l'effetto. Serve a tarare il massimo di voci, che
+     * nessun documento Roland dichiara.
+     */
+    private fun provaVoicing() {
+        val note = intArrayOf(72, 69, 65, 62, 60, 57, 53, 50)
+        for ((k, n) in note.withIndex()) {
+            val ch = CANALE_VOCE_BASE + (k % PARTI_ARMONIA)
+            midi.cc(ch, 127, 0)
+            midi.cc(ch, 11, 100)
+            midi.noteOn(ch, n, 100)
+        }
+        ui.postDelayed({
+            for ((k, n) in note.withIndex())
+                midi.noteOff(CANALE_VOCE_BASE + (k % PARTI_ARMONIA), n)
+        }, 2000)
     }
 
     private fun provaLegato(ch: Int) {

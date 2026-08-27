@@ -302,5 +302,154 @@ fun main() {
     println("  note emesse dopo la pausa: ${spia.soloNoteOn().size}")
     check(spia.soloNoteOn().size == 1) { "raffica di recupero" }
 
+    // ------------------------------------------------------------- voicing
+
+    titolo("voicing: la tabella dei gradi — il nome dell'accordo, poi la scala")
+    fun grado(g: Int, root: Int, q: ChordQuality, sc: Scale): String {
+        val pc = GradiAccordo.classe(g, Chord(root, q), sc)
+        return if (pc == null) "-" else Spelling.pc(pc, Chord(root, q))
+    }
+    println("  C7 misolidia:  9=${grado(9,0,ChordQuality.DOM7,Scales.MISOLIDIA)}" +
+            "  13=${grado(13,0,ChordQuality.DOM7,Scales.MISOLIDIA)}" +
+            "  3=${grado(3,0,ChordQuality.DOM7,Scales.MISOLIDIA)}")
+    println("  C7 alterata:   9=${grado(9,0,ChordQuality.DOM7,Scales.ALTERATA)}" +
+            "  13=${grado(13,0,ChordQuality.DOM7,Scales.ALTERATA)}" +
+            "  3=${grado(3,0,ChordQuality.DOM7,Scales.ALTERATA)}")
+    println("  C ionica:      7=${grado(7,0,ChordQuality.MAJ,Scales.IONICA)}")
+    println("  Cm eolia:      7=${grado(7,0,ChordQuality.MIN,Scales.EOLIA)}")
+    println("  Cm frigia:     9=${grado(9,0,ChordQuality.MIN,Scales.FRIGIA)}")
+    println("  C7sus4:        3=${grado(3,0,ChordQuality.DOM7SUS4,Scales.MISOLIDIA)} (diventa 4)")
+    println("  Cm7b5 locria:  5=${grado(5,0,ChordQuality.MIN7B5,Scales.LOCRIA)}")
+    // il nome dell'accordo non si fa contraddire dalla scala
+    check(GradiAccordo.classe(3, Chord(0, ChordQuality.DOM7), Scales.ALTERATA) == 4)
+    // i gradi non nel nome escono dalla scala
+    check(GradiAccordo.classe(9, Chord(0, ChordQuality.DOM7), Scales.MISOLIDIA) == 2)
+    check(GradiAccordo.classe(9, Chord(0, ChordQuality.DOM7), Scales.ALTERATA) == 1)
+    check(GradiAccordo.classe(13, Chord(0, ChordQuality.DOM7), Scales.ALTERATA) == 8)
+    check(GradiAccordo.classe(7, Chord(0, ChordQuality.MAJ), Scales.IONICA) == 11)
+    check(GradiAccordo.classe(7, Chord(0, ChordQuality.MIN), Scales.EOLIA) == 10)
+    check(GradiAccordo.classe(3, Chord(0, ChordQuality.DOM7SUS4), Scales.MISOLIDIA) == 5)
+    // scala a poche note: si ripiega sulla scala di riferimento della qualita'
+    check(GradiAccordo.classe(9, Chord(0, ChordQuality.DOM7), Scales.BLUES) == 2)
+
+    val voicer = Voicer()
+    val nessuna = IntArray(MAX_VOCI_VOICING + 2) { -1 }
+
+    fun mostra(lead: Int, step: ChordStep, cfg: VoicingCfg,
+               prec: IntArray = nessuna, leadPrec: Int = -1): IntArray {
+        val n = voicer.costruisci(lead, step, cfg, prec, leadPrec)
+        println("  ${cfg.tipo.etichetta} su ${step.chord}, lead ${noteName(lead)}: " +
+                voicer.descrizione(step) + "   ($n voci)")
+        val out = IntArray(n) { voicer.note[it] }
+        // invarianti che valgono per ogni tipo e ogni accordo
+        for (v in out) if (v >= 0) {
+            check(v < lead) { "voce sopra o pari alla lead: $v >= $lead" }
+            check(v >= cfg.notaMinima()) { "voce sotto il registro" }
+        }
+        for (i in out.indices) for (k in 0 until i)
+            check(out[i] < 0 || out[k] < 0 || out[i] != out[k]) { "due voci sulla stessa nota" }
+        return out
+    }
+
+    titolo("voicing: four-way close e la famiglia drop, su C7")
+    val c7 = ChordStep.battute(Chord(0, ChordQuality.DOM7), Scales.MISOLIDIA, 1)
+    val close = mostra(72, c7, VoicingCfg(TipoVoicing.CLOSE, 3))
+    check(close.toList() == listOf(70, 67, 64)) { "atteso Bb4 G4 E4, trovato ${close.toList()}" }
+    val drop2 = mostra(72, c7, VoicingCfg(TipoVoicing.DROP2, 3))
+    check(drop2.toList() == listOf(58, 67, 64)) { "drop 2: la seconda voce giu' di un'ottava" }
+    mostra(72, c7, VoicingCfg(TipoVoicing.DROP3, 3))
+    mostra(72, c7, VoicingCfg(TipoVoicing.DROP24, 3))
+    val ance = mostra(72, c7, VoicingCfg(TipoVoicing.CLOSE_ANCE, 4))
+    check(ance.contains(60)) { "la lead va raddoppiata un'ottava sotto" }
+
+    titolo("voicing: rootless, e il 5 che diventa 13 sui dominanti")
+    val dm7 = ChordStep.battute(Chord(2, ChordQuality.MIN7), Scales.DORICA, 1)
+    val g7 = ChordStep.battute(Chord(7, ChordQuality.DOM7), Scales.MISOLIDIA, 1)
+    val ra = mostra(69, dm7, VoicingCfg(TipoVoicing.ROOTLESS_A, 4))
+    check(ra.none { pitchClass(it) == 2 }) { "il rootless non ha la fondamentale" }
+    val rg = mostra(71, g7, VoicingCfg(TipoVoicing.ROOTLESS_A, 4))
+    check(rg.any { pitchClass(it) == 4 }) { "sul dominante il 5 diventa 13: serve la E" }
+    check(rg.none { pitchClass(it) == 2 }) { "sul dominante il 5 (D) non ci va" }
+    mostra(71, g7, VoicingCfg(TipoVoicing.ROOTLESS_B, 4))
+
+    titolo("voicing: shell, quartal, cluster, spread, corale")
+    val sh = mostra(72, c7, VoicingCfg(TipoVoicing.SHELL_STRETTO, 3))
+    check(sh.any { pitchClass(it) == 0 }) { "lo shell ha la fondamentale" }
+    mostra(72, c7, VoicingCfg(TipoVoicing.SHELL_LARGO, 3))
+    mostra(72, dm7, VoicingCfg(TipoVoicing.QUARTAL, 4))
+    mostra(72, c7, VoicingCfg(TipoVoicing.CLUSTER, 3))
+    mostra(72, c7, VoicingCfg(TipoVoicing.SPREAD, 4))
+    val cm = ChordStep.battute(Chord(0, ChordQuality.MAJ), Scales.IONICA, 1)
+    mostra(76, cm, VoicingCfg(TipoVoicing.CORALE_STRETTO, 3))
+    mostra(76, cm, VoicingCfg(TipoVoicing.CORALE_LARGO, 3))
+
+    titolo("voicing: l'apertura apre anche i tipi che prescrivono la spaziatura")
+    val cfgAp = VoicingCfg(TipoVoicing.CLOSE, 3)
+    var ampiezzaPrec = 0
+    for (a in APERTURE.indices) {
+        cfgAp.apertura = a
+        val o = mostra(72, c7, cfgAp)
+        val amp = 72 - (o.filter { it >= 0 }.minOrNull() ?: 72)
+        println("      apertura ${NOMI_APERTURA[a]}: ampiezza $amp semitoni")
+        check(amp >= ampiezzaPrec) { "apertura piu' larga ma ampiezza minore" }
+        ampiezzaPrec = amp
+    }
+    check(ampiezzaPrec > 12) { "su ampio il close deve spalancarsi" }
+
+    titolo("voicing: le voci si muovono il meno possibile su un II-V-I")
+    // la lead si muove come si muoverebbe davvero: A B C
+    val cfgVl = VoicingCfg(TipoVoicing.ROOTLESS_A, 4)
+    var prec = IntArray(MAX_VOCI_VOICING + 2) { -1 }
+    var totale = 0
+    var leadPrec = -1
+    for ((k, coppia) in listOf(dm7 to 69, g7 to 71, cm to 72).withIndex()) {
+        val passo = coppia.first
+        val lead = coppia.second
+        val n = voicer.costruisci(lead, passo, cfgVl, prec, leadPrec)
+        val nuove = IntArray(MAX_VOCI_VOICING + 2) { -1 }
+        for (i in 0 until n) nuove[i] = voicer.note[i]
+        var ferme = 0
+        if (k > 0) for (i in 0 until n) {
+            if (nuove[i] < 0) continue
+            var d = 99
+            for (pv in prec) if (pv >= 0) d = minOf(d, Math.abs(nuove[i] - pv))
+            if (d == 0) ferme++
+            if (d < 99) totale += d
+        }
+        println("  ${passo.chord} (lead ${noteName(lead)}): ${voicer.descrizione(passo)}" +
+                (if (k > 0) "   [$ferme note tenute]" else ""))
+        prec = nuove
+        leadPrec = lead
+    }
+    println("  movimento totale su due cambi d'accordo, 4 voci: $totale semitoni")
+    println("  (misurato sull'insieme: quanto si sposta ogni nota nuova rispetto alla " +
+            "piu' vicina di prima, non chi tiene cosa)")
+    check(totale <= 24) { "le voci si muovono troppo: $totale" }
+
+    titolo("voicing: con la lead ferma il voicing non si muove affatto")
+    val cfgF = VoicingCfg(TipoVoicing.CLOSE, 3)
+    val precF = IntArray(MAX_VOCI_VOICING + 2) { -1 }
+    var n1 = voicer.costruisci(72, c7, cfgF, precF, -1)
+    for (i in 0 until n1) precF[i] = voicer.note[i]
+    val primo = precF.copyOf()
+    n1 = voicer.costruisci(72, c7, cfgF, precF, 72)
+    for (i in 0 until n1) check(voicer.note[i] == primo[i]) { "si e' mosso senza motivo" }
+    println("  due volte la stessa lead sullo stesso accordo: nessuna nota cambia")
+
+    titolo("voicing: senza posto suonano meno voci")
+    val basso = mostra(45, c7, VoicingCfg(TipoVoicing.CLOSE, 6))
+    check(basso.size < 6) { "con la lead in basso non ci stanno sei voci" }
+
+    titolo("voicing: quanto costa")
+    val cfgB = VoicingCfg(TipoVoicing.DROP2, 4)
+    val precB = IntArray(MAX_VOCI_VOICING + 2) { -1 }
+    voicer.costruisci(72, c7, cfgB, precB, -1)
+    var t0 = System.nanoTime()
+    val giri = 20000
+    for (k in 0 until giri) voicer.costruisci(72 - (k % 12), c7, cfgB, precB, -1)
+    val perNota = (System.nanoTime() - t0).toDouble() / giri / 1000.0
+    println("  %.2f microsecondi per nota (budget: qualche millisecondo)".format(perNota))
+    check(perNota < 500.0)
+
     println("\nTUTTO OK")
 }

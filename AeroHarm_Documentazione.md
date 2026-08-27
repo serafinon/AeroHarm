@@ -20,9 +20,13 @@ Il caso d'uso di partenza: improvvisare su un giro di blues con una voce che
 armonizza per seconde, dove la qualità dell'intervallo cambia da sola a ogni
 accordo.
 
-Sulla stessa architettura gira anche un **arpeggiatore**: la nota suonata dice
-solo da dove partire, e l'arpeggio sale sulle note dell'accordo corrente. Gli
-effetti si scelgono uno alla volta e si configurano per ogni brano — vedi §14.
+Sulla stessa architettura girano altri due effetti. Un **arpeggiatore**: la nota
+suonata dice solo da dove partire, e l'arpeggio sale sulle note dell'accordo
+corrente. E un **voicer** (§15): il musicista e' la lead, e sotto la sua nota
+nascono le voci di un voicing costruito sui **gradi dell'accordo** — shell,
+rootless, drop, spread — per gli stacchi di sezione e gli accompagnamenti, non
+per i soli. Gli effetti si scelgono uno alla volta e si configurano per ogni
+brano — vedi §14.
 
 **Perché serve.** L'AE-20 ha un motore di armonia a intervalli **fissi**
 (`Harmony 1`–`Harmony 4`): trasposizioni parallele costanti, che su una
@@ -78,6 +82,11 @@ canale *n* → parte *n*. Lo risolve il test 3 della procedura guidata.
 `CC68` Legato · `CC71–78` Resonance, Release, Attack, Cutoff, Decay, Vibrato
 Rate/Depth/Delay (relativi, `00–40–7F` = −64…0…+63) · `CC84` Portamento Control ·
 `CC91/93` Reverb/Chorus Send · `CC126/127` Mono/Poly.
+
+`CC126/127` **li usa l'app**: il voicer manda `CC127` alle parti di armonia
+quando le voci sono piu' delle parti disponibili, e `CC126` quando si torna agli
+altri effetti, che il legato senza retrigger lo vogliono mono (§5).
+**[DA VERIFICARE]** col test 5 della procedura guidata.
 
 **RPN**: `00 00` Pitch Bend Sensitivity 0–24 semitoni · `00 02` Channel Coarse
 Tuning `10H–40H–70H` = −48…0…+48 semitoni → `Part Coarse Tune` · `7F 7F` null.
@@ -149,6 +158,13 @@ MIDI Ctrl Sound Off                 ch 3 → Part 3   armonia 2
 `Legato Retrigger Interval = OFF`: legato e bend agiscono per canale e per
 parte, quindi voci che devono muoversi indipendentemente non possono
 condividerne una.
+
+⚠️ **I canali di ricezione sono cinque**, il primo e' la melodia, quindi le voci
+generate sono al massimo **quattro**. All'armonizzatore e all'arpeggiatore
+bastano. Al voicer no — un four-way close con la lead raddoppiata sono cinque
+note, uno spread da big band sei — e per superare il quattro mette **piu' note
+sulla stessa parte, in POLY** (§15.5). Il comportamento degli altri due effetti
+non cambia: una voce per parte finche' le parti bastano.
 
 ### 3.1 Perché questa topologia
 
@@ -514,8 +530,9 @@ harmonizer/
     app/src/main/java/harmonizer/
       core/                    copia del modulo puro
       app/
-        Harmonizer.kt          runtime: voci, arpeggio, mute, stop  (no Android)
+        Harmonizer.kt          runtime: voci, arpeggio, voicing, mute, stop  (no Android)
         Fx.kt                  configurazioni degli effetti, sequenza dell'arpeggio  (no Android)
+        Voicing.kt             gradi d'accordo, catalogo dei voicing, piazzamento  (no Android)
         Runtime.kt             VoiceTracker, Transport, TapTempo, AllowedCache  (no Android)
         Midi.kt                MidiManager, ricezione, invio, richiamo scena
         Clock.kt               clock degli effetti, thread a priorità audio
@@ -610,6 +627,11 @@ Per **ogni** scena usata dal vivo:
 - Sul tone delle parti di armonia: `Legato Retrigger Interval` **OFF**
 - Salvare come scena utente e annotarne banco e numero per la scaletta.
 
+Per i brani che usano il **voicer con piu' di quattro voci** serve una scena in
+cui le parti 2-5 accettino la polifonia: `Unison Switch` **Off** (con ON la parte
+e' forzata mono, §2.5) e, se `CC127` non basta, `Mono/Poly` **POLY** gia' nella
+scena. Il resto identico.
+
 `Legato Retrigger Interval = OFF` serve all'armonia e **non disturba
 l'arpeggiatore**: l'arpeggio manda il note-off prima del note-on successivo,
 quindi ogni nota riattacca comunque. Sono i due comportamenti opposti dello
@@ -633,6 +655,13 @@ sì/no e ricava da sola la configurazione. Sette passi:
 6. **Test 3** — la stessa nota su ch1…ch5 → mappa canali e parti.
 7. **Test 4** — due note sovrapposte sulla parte di armonia. Nuovo attacco?
    → decide fra legato (§5 via primaria) e pitch bend (via alternativa).
+8. **Test 5** — `CC127` e quattro note insieme su una sola parte.
+   → dice se il voicer puo' superare le quattro voci (§15.5).
+9. **Test 6** — otto note di voicing, due per parte su ch2-ch5.
+   → tara il massimo di voci, che nessun documento Roland dichiara.
+
+Alla fine la procedura rimette `CC126` sulle parti di armonia: il mono e' quello
+che serve agli altri due effetti.
 
 Alla fine l'app stampa nel monitor la configurazione ricavata.
 
@@ -645,7 +674,8 @@ selezione per accordo; grafia sul circolo delle quinte; app Android che compila 
 gira; livello MIDI con ricezione, invio e richiamo scena; macchine a stati;
 carosello; selettore circolare con strisce; editor progressione; scaletta con
 persistenza; servizio in primo piano; procedura guidata; **vista degli effetti**
-con armonizzatore configurabile e arpeggiatore, verificati su JVM (§14).
+con armonizzatore configurabile, arpeggiatore e voicer, verificati su JVM
+(§14, §15).
 
 **Manca**: tutto ciò che richiede l'Aerophone in mano — cioè la verifica delle
 quattro incognite, la taratura di `maxVoices`, e la scelta fra legato e bend.
@@ -699,8 +729,8 @@ scritti nel codice. La **vista degli effetti** sta a destra della principale,
 speculare alla scaletta che sta a sinistra: si raggiunge trascinando il dito
 verso sinistra o col pulsante `fx`.
 
-In cima si sceglie l'effetto — `harmonizer` o `arpeggiator` — e sotto compaiono i
-parametri di quello scelto. Non c'è un «conferma»: ogni tocco applica subito e
+In cima si sceglie l'effetto — `harmonizer`, `arpeggiator` o `voicing` — e sotto
+compaiono i parametri di quello scelto. Non c'è un «conferma»: ogni tocco applica subito e
 salva nel brano, perché qui si regola mentre si prova a suonare.
 
 I pannelli si costruiscono **una volta sola**: toccare un chip ridipinge i chip
@@ -715,9 +745,9 @@ alto dello schermo.
 della nota, che è l'unica cosa su cui l'app può ancora peggiorare la latenza (le
 altre — scheduler, GC, USB — non le governa).
 
-**Memorizzati tutti e due.** Ogni brano della scaletta porta l'effetto attivo
-*e* la configurazione di entrambi: passare da armonizzatore ad arpeggiatore e
-tornare indietro non perde niente. Anche i gradi delle voci spente restano:
+**Memorizzati tutti e tre.** Ogni brano della scaletta porta l'effetto attivo *e*
+la configurazione di tutti: passare da armonizzatore a voicer e tornare indietro
+non perde niente. Anche i gradi delle voci spente restano:
 `HarmonizerCfg.gradi` conserva sempre quattro valori, si usano i primi `voci`.
 Formato delle preferenze: `v5`.
 
@@ -882,3 +912,211 @@ sistema di 500 ms che produce **una** nota e non una raffica.
 **Non verificato**, perché richiede lo strumento: che il riattacco suoni come un
 riattacco, la latenza reale sul percorso USB, e quanto in alto si possa spingere
 l'articolazione prima che l'AE-20 o il telefono non stiano più dietro.
+
+---
+
+## 15. Il voicer
+
+Il terzo effetto. Non serve per i soli — quello è l'armonizzatore — ma per gli
+**stacchi di sezione** e gli **accompagnamenti**: quello che un arrangiatore
+chiama *voicing*.
+
+Quattro differenze di fondo rispetto all'armonizzatore:
+
+| | armonizzatore | voicer |
+|---|---|---|
+| le note escono da | gradi della **scala** | gradi dell'**accordo** |
+| stanno | sopra o sotto, a scelta | sempre **sotto**: tu sei la lead |
+| il numero di voci è | fisso | un **massimo** |
+| la regola è | movimento minimo per voce | movimento minimo **dell'insieme** |
+
+Le voci seguono il tuo fiato come sempre, la melodia passa come sempre, e
+transport, `BATT. 1`, `STOP` e `FX` funzionano come sugli altri effetti.
+
+### 15.1 Da gradi di scala a gradi d'accordo
+
+Serve una tabella `grado d'accordo → classe di note`, e ha **due sorgenti in
+ordine di precedenza**:
+
+1. **il nome dell'accordo**, dove è esplicito. Su `C7` il 3 è `E` e il 7 è `Bb`;
+   su `Cm7b5` il 5 è `Gb`. Nessuna scala può contraddirlo. Su `C7sus4` la terza
+   non esiste e chi la chiede riceve la quarta.
+2. **la scala del passo**, per tutto il resto — 9, 11, 13, e il 7 sulle triadi.
+   Su `C7` misolidia il 9 è `D` e il 13 è `A`; su `C7` alterata diventano `Db` e
+   `Ab`. Su `C` ionica il 7 è `B`, su `Cm` eolia è `Bb`.
+
+È lo stesso mestiere del primo motore: la specie dell'intervallo **esce dalla
+scala** invece di essere indovinata da una tabella di casi speciali.
+
+Se la scala del passo non ha sette note — blues, pentatoniche, esatonale,
+diminuite — i gradi per indice non sono definiti, e si ripiega sulla scala di
+riferimento della qualità, che ogni `ChordQuality` porta con sé.
+
+### 15.2 Il catalogo
+
+Quattordici tipi. I gradi sono dal **basso verso l'alto**; tu stai sopra tutto.
+
+| tipo | gradi | voci | a cosa serve |
+|---|---|---|---|
+| **shell stretto** | 1 · 3 · 7 | 3 | comping essenziale: due note dicono l'accordo |
+| **shell largo** | 1 · 7 · 3 | 3 | fondamentale, settima, decima: la sinistra di Bud Powell |
+| **rootless A** | 3 · 5 · 7 · 9 | 4 | Bill Evans. Sui dominanti il 5 diventa **13** |
+| **rootless B** | 7 · 9 · 3 · 5 | 4 | la stessa in seconda posizione: si alterna con A |
+| **quartal** | quarte, terza in cima | 4 | «So What». Modale, non dichiara la qualità |
+| **close (four-way)** | i 4 chord tone serrati | 3 | *il* voicing da sezione sax |
+| **close 5 ance** | close + lead all'ottava | 4 | la scrittura a cinque delle cinque ance |
+| **drop 2** | close, 2ª voce giù di 8ª | 3 | il più usato di tutti |
+| **drop 3** | close, 3ª voce giù di 8ª | 3 | più largo in basso |
+| **drop 2+4** | due voci giù di 8ª | 3 | tutti da big band, ottoni |
+| **spread (ottoni)** | 1 · 7 · 3 · 5, basso staccato | 4 | largo sotto e stretto sopra, come la serie armonica |
+| **cluster (ance)** | seconde e terze di scala | 3 | denso, opaco: Thad Jones, Ellington |
+| **corale stretto** | 1 · 3 · 5 | 3 | SATB in posizione stretta, tu sul soprano |
+| **corale largo** | 1 · 5 · 3 | 3 | armonia aperta |
+
+Nelle sigle da sezione **la lead conta come prima voce dall'alto**: un four-way
+close sono la tua nota più tre voci, quindi `voci = 3`. Per la stessa ragione
+`drop 2` sposta la seconda voce *contando la tua*, cioè la prima generata, com'è
+d'uso fra arrangiatori.
+
+Due cose che il catalogo dice meglio di una spiegazione:
+
+- **corale largo non è corale stretto più largo.** È un altro *ordine* dei
+  gradi, `1-5-3` invece di `1-3-5`: con i gradi prescritti la spaziatura può
+  solo saltare di ottave, quindi la posizione aperta la fanno i gradi. Lo stesso
+  vale per shell stretto e shell largo.
+- **il raddoppio della lead all'ottava lo decide il tipo**, non un interruttore
+  globale: è la scrittura a cinque delle ance, e altrove non si usa. Un
+  raddoppio d'ottava non è un raddoppio di volume: è un'altra nota.
+
+### 15.3 Il motore: una sola programmazione dinamica
+
+Le tre regole — movimento minimo, distanza fra le voci, note dai gradi previsti
+— non sono tre algoritmi. Sono tre **costi** sullo stesso problema.
+
+1. **Candidati**: tutte le note MIDI la cui classe è uno dei gradi ammessi,
+   comprese fra il registro minimo e la tua nota esclusa.
+2. **Si assegna dall'alto verso il basso**, ogni voce sotto la precedente. È il
+   vincolo d'ordine a rendere il problema risolubile *esattamente*: niente
+   incroci, quindi l'assegnamento è monotono e la DP `(voce × candidato)` trova
+   l'optimum, non un'approssimazione.
+3. **Costo** di mettere una voce su una nota:
+
+```
+movimento    distanza dalla più vicina delle note che stanno suonando
+spaziatura   |(nota sopra − questa) − passo bersaglio|, asimmetrica
+struttura    escluso, se il grado non è quello prescritto per quella posizione
+parallele    penalità per quinte e ottave parallele fra voci adiacenti (corale)
+```
+
+Tre conseguenze:
+
+- **due voci non possono finire sulla stessa nota**, perché l'ordine è
+  strettamente discendente. Il raddoppio che sarebbe da evitare è impossibile
+  per costruzione, non corretto dopo. Se i candidati non bastano suonano meno
+  voci — che è la semantica di «massimo». Restano possibili solo i duplicati
+  creati dai drop e dal raddoppio della lead, e quelli si scartano;
+- la spaziatura è **asimmetrica**: a pari errore vince il più stretto. Senza
+  questa preferenza i pareggi si risolvevano a caso, e la quartal prendeva una
+  quarta dove voleva una terza;
+- **costa 1,9 µs** per nota, misurato. L'armonizzatore sta a 0,1: venti volte
+  tanto, e sempre tre ordini di grandezza sotto il budget di un evento MIDI. Il
+  tempo di elaborazione è mostrato nella riga di stato, quindi si verifica
+  invece di fidarsi.
+
+#### Il movimento si misura sull'insieme, non sulla posizione
+
+Legare ogni voce alla propria posizione strutturale sembrava naturale ed era
+sbagliato. Su `Dm7 → G7` un rootless A passa da `F A C E` a `B E F A`: sono
+quasi le stesse note, e un arrangiatore **tiene fermo quello che può e muove
+solo la `C` sulla `B`**. Ma il 9 di prima deve diventare il 9 di dopo, e se il
+confronto è posizione per posizione quella voce si sposta di una quinta senza
+motivo: quattro note riarticolate per spostarne una.
+
+Quindi il costo di movimento è la distanza dalla **più vicina** delle note che
+stanno suonando, e in uscita si manda **solo la differenza fra i due insiemi**:
+una nota che c'era e c'è ancora non si riarticola, qualunque posizione occupi nel
+nuovo voicing. Le voci suonano tutte sulla stessa parte: quello che l'orecchio
+sente è l'insieme, non chi tiene cosa.
+
+Misurato sul banco, un II-V-I a quattro voci con la lead che si muove: 20
+semitoni di spostamento totale, con note tenute a ogni cambio.
+
+### 15.4 I parametri
+
+| parametro | valori |
+|---|---|
+| **voci** | 1–8, massimo e non numero fisso |
+| **tipo** | i quattordici di §15.2 |
+| **apertura** | serrato · chiuso · medio · aperto · ampio |
+| **registro** | nota più bassa concessa: C2 · F2 · A2 · C3 |
+| **note di passaggio** | tieni · rivoicing · planing · auto |
+| **soglia** | 60 · 120 · 250 · 500 ms, per il modo automatico |
+
+**L'apertura** è il passo bersaglio fra voci adiacenti, in semitoni. Dove il tipo
+prescrive la spaziatura — close, drop, quartal, cluster — non viene ignorata: si
+somma come **scostamento** dal valore neutro, così il tipo decide il carattere e
+l'apertura lo apre o lo chiude. Un four-way close su «ampio» si spalanca da 8 a
+29 semitoni e resta un four-way close nei gradi.
+
+**Quando la tua nota non è nell'accordo** — e succederà, perché tu puoi suonare
+quello che vuoi mentre le voci generate non possono — ci sono tre risposte, tutte
+pratica standard, più una automatica:
+
+| modo | cosa fa | quando è giusto |
+|---|---|---|
+| **tieni** | il voicing resta fermo, si muove solo la tua nota | linee veloci: è quello che fa una sezione, e muove zero |
+| **rivoicing** | ricostruisce dai gradi, evitando la seconda minore sotto la lead | note lunghe fuori accordo |
+| **planing** | tutto il voicing si muove parallelo alla tua nota, anche fuori dall'accordo | il suono soli da big band. È l'unico che sospende la regola dei gradi, e per questo è una scelta dichiarata |
+| **auto** | tiene sotto soglia, rivoicizza sopra | sotto soglia sei di passaggio, sopra ti stai fermando |
+
+Al **primo attacco** si costruisce comunque, anche su una nota di passaggio: non
+c'è niente da tenere.
+
+### 15.5 Canali, polifonia e riattacco
+
+I canali di ricezione dell'AE-20 sono cinque e il primo è la melodia (§2.1),
+quindi le parti disponibili sono quattro. Il voicer ne vuole più di quattro.
+
+**Una voce per parte finché le parti bastano**, poi più note sulla stessa parte,
+distribuite a giro: la voce *i* va sul canale `2 + (i mod 4)`. Con quattro voci o
+meno il comportamento è identico a quello degli altri effetti; oltre, le parti
+devono accettare la polifonia, e l'app manda `CC127` — e `CC126` quando si torna
+agli altri effetti, perché il legato senza retrigger vuole il mono.
+
+Il costo di questa scelta è che una voce che si sposta **riattacca** invece di
+scivolare, perché il legato monofonico non c'è più. Per questo effetto è quasi un
+guadagno:
+
+- gli **stacchi** riarticolano per definizione: una sezione che cambia accordo
+  riattacca, non striscia;
+- espressione e bend agiscono **per parte**, quindi tutte le voci seguono il tuo
+  fiato e il tuo morso *identicamente*. Con una voce per canale bisognerebbe
+  specchiare i CC su cinque canali e sperare che arrivino insieme;
+- e comunque le note comuni non riarticolano affatto (§15.3), quindi il
+  riattacco si sente solo dove la nota cambia davvero.
+
+Il tetto vero è la **polifonia dell'AE-20**, che nessun documento Roland
+dichiara: la tarano i test 5 e 6 della procedura guidata.
+
+### 15.6 Cosa è verificato, e cosa manca
+
+`core/src/DemoFx.kt` verifica su JVM, senza strumento: la tabella dei gradi con
+il nome dell'accordo che vince sulla scala e la scala che risolve il resto; i
+quattordici tipi con le loro note attese su `C7`, `Dm7`, `G7`; il `5 → 13` sui
+dominanti; il drop che sposta la voce giusta di un'ottava; il raddoppio della
+lead; le invarianti che valgono per ogni tipo — nessuna voce sopra o pari alla
+lead, nessuna sotto il registro, nessuna coppia sulla stessa nota; l'apertura
+che allarga davvero e in modo monotono; il movimento su un II-V-I; il fatto che a
+lead ferma sullo stesso accordo **nessuna nota cambi**; che senza posto suonino
+meno voci; e il costo per nota.
+
+**Manca**, e serve lo strumento: se il riattacco suoni come un riattacco, se
+`CC127` funzioni davvero, quante voci regga la polifonia, e come suonino i tipi
+larghi — spread e drop 2+4 — su un motore di fiato invece che su un pianoforte.
+
+**Limite noto.** I rootless prescrivono il grado in cima: se la tua nota *è* quel
+grado, la struttura è costretta un'ottava sotto (su `G7` rootless A la voce alta
+è il 9, cioè `A`: se suoni `A4` il voicing scende). È esattamente la ragione per
+cui gli arrangiatori alternano A e B, e per ora la scelta è manuale. Un tipo
+«rootless auto» che prenda la migliore delle due è la cosa più utile da
+aggiungere.

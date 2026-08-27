@@ -39,7 +39,8 @@ data class Brano(
      */
     var fx: FxTipo = FxTipo.HARMONIZER,
     var harmCfg: HarmonizerCfg = HarmonizerCfg(),
-    var arpCfg: ArpCfg = ArpCfg()
+    var arpCfg: ArpCfg = ArpCfg(),
+    var voicingCfg: VoicingCfg = VoicingCfg()
 )
 
 /** Scaletta con salvataggio nelle preferenze: niente librerie esterne. */
@@ -85,8 +86,10 @@ class Setlist(val brani: MutableList<Brano> = mutableListOf()) {
                     val fx = FxTipo.da(campi.getOrNull(5) ?: "h")
                     val hc = leggiHarm(campi.getOrNull(6))
                     val ac = leggiArp(campi.getOrNull(7))
+                    val vc = leggiVoicing(campi.getOrNull(8))
                     if (passi.isNotEmpty())
-                        out.add(Brano(nome, Progression(nome, passi), bpm, scena, batt, fx, hc, ac))
+                        out.add(Brano(nome, Progression(nome, passi), bpm, scena, batt,
+                                      fx, hc, ac, vc))
                 } catch (_: Exception) { }
             }
             return if (out.isEmpty()) predefinita() else Setlist(out)
@@ -141,6 +144,23 @@ class Setlist(val brani: MutableList<Brano> = mutableListOf()) {
             c.normalizza()
             return c
         }
+
+        /** "tipo,voci,apertura,registro,passaggio,soglia" */
+        private fun leggiVoicing(t: String?): VoicingCfg {
+            val c = VoicingCfg()
+            if (t.isNullOrBlank()) return c
+            try {
+                val q = t.split(",")
+                c.tipo = TipoVoicing.valueOf(q[0])
+                c.voci = q[1].toInt()
+                c.apertura = q[2].toInt()
+                c.registro = q[3].toInt()
+                c.passaggio = ModoPassaggio.valueOf(q[4])
+                q.getOrNull(5)?.toIntOrNull()?.let { c.soglia = it }
+            } catch (_: Exception) { }
+            c.normalizza()
+            return c
+        }
     }
 
     fun salva(ctx: Context) {
@@ -165,6 +185,10 @@ class Setlist(val brani: MutableList<Brano> = mutableListOf()) {
                 .append(b.arpCfg.notePerQuarto).append(",").append(b.arpCfg.ottave).append(",")
                 .append(b.arpCfg.gate).append(",").append(b.arpCfg.swing).append(",")
                 .append(if (b.arpCfg.soloAccordo) "1" else "0")
+            sb.append("\u00a6").append(b.voicingCfg.tipo.name).append(",")
+                .append(b.voicingCfg.voci).append(",").append(b.voicingCfg.apertura).append(",")
+                .append(b.voicingCfg.registro).append(",").append(b.voicingCfg.passaggio.name)
+                .append(",").append(b.voicingCfg.soglia)
             sb.append("\n")
         }
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
@@ -306,6 +330,12 @@ class SetlistView(private val act: Activity, private val setlist: Setlist) {
             else (0 until b.harmCfg.voci).joinToString(" · ") { v ->
                 "${gradoBreve(b.harmCfg.estremoBasso(v))}…${gradoBreve(b.harmCfg.estremoAlto(v))}"
             })
+        FxTipo.VOICING -> "%s · max %d %s · %s · %s".format(
+            b.voicingCfg.tipo.etichetta,
+            b.voicingCfg.voci,
+            if (b.voicingCfg.voci == 1) "voce" else "voci",
+            NOMI_APERTURA[b.voicingCfg.apertura],
+            b.voicingCfg.passaggio.etichetta)
         FxTipo.ARPEGGIATOR -> "%s · %s · %d ott.%s".format(
             b.arpCfg.pattern.etichetta,
             Suddivisioni.NOMI[Suddivisioni.indiceDi(b.arpCfg.notePerQuarto)],
