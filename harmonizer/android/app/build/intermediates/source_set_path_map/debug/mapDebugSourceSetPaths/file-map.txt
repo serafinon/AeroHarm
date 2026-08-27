@@ -1,7 +1,0 @@
-harmonizer.app-pngs-0 /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/build/generated/res/pngs/debug
-harmonizer.app-resValues-1 /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/build/generated/res/resValues/debug
-harmonizer.app-packageDebugResources-2 /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
-harmonizer.app-packageDebugResources-3 /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
-harmonizer.app-debug-4 /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/build/intermediates/merged_res/debug/mergeDebugResources
-harmonizer.app-debug-5 /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/debug/res
-harmonizer.app-main-6 /Users/niccoloserafino/Downloads/aerofoni/harmonizer/android/app/src/main/res

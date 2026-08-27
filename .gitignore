@@ -1,0 +1,14 @@
+# Artefatti di compilazione: si rigenerano con `gradle :app:assembleDebug`.
+# Erano finiti nel primo commit; toglierli dal tracciamento rende leggibile
+# la cronologia, che in questo progetto e' il posto dove sta il "perche'".
+harmonizer/android/app/build/
+harmonizer/android/build/
+harmonizer/android/.gradle/
+harmonizer/android/.kotlin/
+harmonizer/android/local.properties
+
+# Uscite dei banchi di verifica su JVM (kotlinc -d out...)
+harmonizer/out*/
+
+# macOS
+.DS_Store
