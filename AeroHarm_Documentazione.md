@@ -20,6 +20,10 @@ Il caso d'uso di partenza: improvvisare su un giro di blues con una voce che
 armonizza per seconde, dove la qualità dell'intervallo cambia da sola a ogni
 accordo.
 
+Sulla stessa architettura gira anche un **arpeggiatore**: la nota suonata dice
+solo da dove partire, e l'arpeggio sale sulle note dell'accordo corrente. Gli
+effetti si scelgono uno alla volta e si configurano per ogni brano — vedi §14.
+
 **Perché serve.** L'AE-20 ha un motore di armonia a intervalli **fissi**
 (`Harmony 1`–`Harmony 4`): trasposizioni parallele costanti, che su una
 progressione stonano. L'armonia *intelligente*, quella che segue scala e
@@ -296,14 +300,14 @@ tacere mentre la progressione continua a scorrere.
 | Macchina | Stati | Governa |
 |---|---|---|
 | Transport | `STOPPED`/`RUNNING` + BPM + posizione | avanzamento progressione |
-| Mute | `ACTIVE`/`MUTED` | generazione delle voci |
+| Mute | `ACTIVE`/`MUTED` | generazione delle voci o dell'arpeggio |
 | Passthrough | sempre attivo | melodia ed espressione |
 
 ### 6.1 Assegnazione dei controlli fisici
 
 | Controllo | Gesto | Azione |
 |---|---|---|
-| **S1** | pressione singola | toggle **mute** dell'armonia |
+| **S1** | pressione singola | toggle **mute** dell'effetto |
 | **S2** | pressione singola | **"questo istante è la battuta 1"** |
 | **S2** | pressione lunga (>800 ms) | **stop** completo |
 
@@ -380,13 +384,19 @@ un pezzo e l'altro: sta sullo schermo, con il pulsante largo in basso.
   Tap e trascinamento si distinguono con la soglia di movimento di sistema
   (`scaledTouchSlop`) e un limite di 350 ms, così scorrere non seleziona mai per
   sbaglio. La pressione lunga scatta a 500 ms con un ritorno aptico.
-- **ARMONIA** e **BATT. 1**: due pulsanti quadrati sulla stessa riga, a simboli
+- **FX** e **BATT. 1**: due pulsanti quadrati sulla stessa riga, a simboli
   disegnati, con nell'angolo l'etichetta minuscola `S1` / `S2` che ricorda a
-  quale controllo fisico corrispondono.
+  quale controllo fisico corrispondono. `FX` silenzia l'effetto attivo,
+  qualunque sia — l'etichetta diceva `ARMONIA` finché l'armonizzatore era
+  l'unico effetto.
 - **STOP**: riga a sé, più piccolo, quadrato rosso, etichetta `hold S2`.
 - **TAP**: occupa tutto lo spazio rimanente in basso, col BPM corrente.
 - **Sezione di collegamento**: visibile finché lo strumento non è connesso,
   poi sparisce.
+
+La vista principale ha **due vicine**: la scaletta a sinistra e gli effetti a
+destra. Si raggiungono trascinando il dito — verso destra la scaletta, verso
+sinistra gli effetti — oppure dai pulsanti della riga di navigazione.
 
 ### 7.2 Selettore a circolo delle quinte
 
@@ -412,8 +422,8 @@ editare, `✕` per eliminare, `+` per aggiungere.
 ### 7.2.1 Navigazione
 
 Non ci sono pulsanti «indietro»: si torna col **tasto indietro di Android**.
-Dalla progressione, dalla scaletta e dalla schermata test si rientra nella vista
-principale; dal selettore si torna da dove è stato aperto — progressione se ci si
+Dalla progressione, dalla scaletta, dagli effetti e dalla schermata test si
+rientra nella vista principale; dal selettore si torna da dove è stato aperto — progressione se ci si
 è arrivati dalla lista, vista principale se dalla pressione lunga sul carosello.
 Dalla principale il tasto indietro esce dall'app.
 
@@ -498,17 +508,22 @@ harmonizer/
     Demo.kt                    banco di verifica musicale
     DemoEstranee.kt            confronto fra i due metodi di trasposizione
     DemoScale.kt               effetto della scelta della scala
+    DemoFx.kt                  banco di verifica degli effetti (§14)
     Bench.kt                   misura del costo per nota
   android/
     app/src/main/java/harmonizer/
       core/                    copia del modulo puro
       app/
-        Harmonizer.kt          runtime: voci, mute, stop, riaccordatura  (no Android)
+        Harmonizer.kt          runtime: voci, arpeggio, mute, stop  (no Android)
+        Fx.kt                  configurazioni degli effetti, sequenza dell'arpeggio  (no Android)
         Runtime.kt             VoiceTracker, Transport, TapTempo, AllowedCache  (no Android)
         Midi.kt                MidiManager, ricezione, invio, richiamo scena
+        Clock.kt               clock degli effetti, thread a priorità audio
         MainActivity.kt        schermate e procedura guidata
         Widgets.kt             SymbolButton, ChordCarousel
         Ui.kt                  Strip, ChordPicker, ProgressionView
+        FxView.kt              vista degli effetti, selettore verticale dei gradi
+        Scorrimento.kt         gesto di cambio vista, bidirezionale
         CircleOfFifthsView.kt  selettore circolare
         Setlist.kt             modello, persistenza, schermata
         HarmService.kt         servizio in primo piano e wake lock
@@ -595,6 +610,11 @@ Per **ogni** scena usata dal vivo:
 - Sul tone delle parti di armonia: `Legato Retrigger Interval` **OFF**
 - Salvare come scena utente e annotarne banco e numero per la scaletta.
 
+`Legato Retrigger Interval = OFF` serve all'armonia e **non disturba
+l'arpeggiatore**: l'arpeggio manda il note-off prima del note-on successivo,
+quindi ogni nota riattacca comunque. Sono i due comportamenti opposti dello
+stesso parametro, ottenuti dall'app scegliendo l'ordine dei messaggi.
+
 ---
 
 ## 11. La procedura guidata
@@ -624,7 +644,8 @@ Alla fine l'app stampa nel monitor la configurazione ricavata.
 selezione per accordo; grafia sul circolo delle quinte; app Android che compila e
 gira; livello MIDI con ricezione, invio e richiamo scena; macchine a stati;
 carosello; selettore circolare con strisce; editor progressione; scaletta con
-persistenza; servizio in primo piano; procedura guidata.
+persistenza; servizio in primo piano; procedura guidata; **vista degli effetti**
+con armonizzatore configurabile e arpeggiatore, verificati su JVM (§14).
 
 **Manca**: tutto ciò che richiede l'Aerophone in mano — cioè la verifica delle
 quattro incognite, la taratura di `maxVoices`, e la scelta fra legato e bend.
@@ -668,3 +689,196 @@ Il footswitch **BOSS FS-1-WL** si accoppia all'AE-20 in Bluetooth MIDI — lo
 strumento mostra "MIDI Online" — e può accoppiarsi **contemporaneamente** a
 strumento e telefono, presentandosi come `FS-1-WL+`. Non serve: S1 e S2 bastano.
 Diventa interessante per spostare mute e riallineamento sotto il piede.
+
+---
+
+## 14. Gli effetti
+
+L'armonizzatore non è più l'unico effetto, e i suoi parametri non sono più
+scritti nel codice. La **vista degli effetti** sta a destra della principale,
+speculare alla scaletta che sta a sinistra: si raggiunge trascinando il dito
+verso sinistra o col pulsante `fx`.
+
+In cima si sceglie l'effetto — `harmonizer` o `arpeggiator` — e sotto compaiono i
+parametri di quello scelto. Non c'è un «conferma»: ogni tocco applica subito e
+salva nel brano, perché qui si regola mentre si prova a suonare.
+
+I pannelli si costruiscono **una volta sola**: toccare un chip ridipinge i chip
+di quella striscia e nient'altro. Ricostruire il pannello — che è la scorciatoia
+naturale, e il primo modo in cui era scritto — riportava lo scorrimento in cima
+a ogni tocco, cioè rendeva inusabile il pannello dell'arpeggiatore, che è più
+alto dello schermo.
+
+### 14.1 Uno alla volta, entrambi memorizzati
+
+**Attivo uno solo.** Due catene in serie raddoppierebbero il lavoro sul percorso
+della nota, che è l'unica cosa su cui l'app può ancora peggiorare la latenza (le
+altre — scheduler, GC, USB — non le governa).
+
+**Memorizzati tutti e due.** Ogni brano della scaletta porta l'effetto attivo
+*e* la configurazione di entrambi: passare da armonizzatore ad arpeggiatore e
+tornare indietro non perde niente. Anche i gradi delle voci spente restano:
+`HarmonizerCfg.gradi` conserva sempre quattro valori, si usano i primi `voci`.
+Formato delle preferenze: `v5`.
+
+### 14.2 Armonizzatore: i parametri che prima erano nel codice
+
+| Parametro | Valori |
+|---|---|
+| **voci** | 1–4 voci **di armonia**, una parte per voce dal canale 2 |
+| **movimento** | grado fisso · casuale · casuale alternato · movimento minimo |
+| **grado** | a grado fisso uno per voce; negli altri modi un intervallo **per voce** |
+
+Le voci si **aggiungono** alla melodia, che continua a passare sul canale 1: con
+una voce in uscita suonano due note. Non è un dettaglio di conteggio — con
+`MIDI Ctrl Sound = Off` la melodia esiste solo perché l'app la ri-emette (§3), e
+né il mute né lo stop la toccano (§6.3).
+
+I nomi dei modi sono scritti per essere capiti **mentre si scelgono**, e sotto
+la striscia compare la spiegazione di quello selezionato — «guida voci» non
+dice nulla a chi non conosce il termine inglese. Le spiegazioni stanno in
+`MODI_HARM`, accanto ai nomi, non in questo documento: chi regola l'app non ce
+l'ha in mano.
+
+| Modo | Cosa fa |
+|---|---|
+| **grado fisso** | ogni voce tiene sempre il proprio grado: l'armonia è parallela alla melodia, e cambia qualità secondo l'accordo |
+| **casuale** | a ogni nota ogni voce pesca un grado nell'intervallo; può ripetere quello di prima, quindi qualche nota resta ferma |
+| **casuale alternato** | come casuale, ma una voce non ripesca il grado appena usato: l'intervallo cambia per forza (`RANDOM_NO_REPEAT`) |
+| **movimento minimo** | ogni voce prende il grado la cui nota è più vicina a quella che ha appena suonato: è il voice leading (§4.4), il modo consigliato |
+
+**Il grado si sceglie su un selettore verticale**, una colonna per voce col
+numero in cima, che cambia forma perché le due domande sono diverse:
+
+- a **grado fisso** una maniglia per voce, col proprio grado;
+- negli **altri modi** una **barra** per voce: gli estremi entro cui *quella*
+  voce può muoversi. Si trascinano i due capi, oppure la barra intera per
+  spostare l'intervallo senza cambiarne la larghezza.
+
+Verticale perché è un'altezza — in alto suona in alto — e una colonna per voce,
+così due voci sullo stesso grado non si nascondono a vicenda: si vede l'accordo
+che si sta impilando.
+
+⚠️ **Un intervallo per voce, e non uno in comune.** Prima era uno globale, e
+prima ancora era l'unione dei gradi delle voci: due errori in fila, ciascuno
+imparato dall'uso. L'unione legava l'insieme alle voci, e con una voce sola
+l'insieme aveva **un** elemento — «casuale» non poteva muovere niente. L'unico
+intervallo condiviso muoveva sì, ma tutte le voci nello stesso spazio, quindi
+pescavano le stesse note e si accavallavano. Con un intervallo per voce si
+decide che la prima sta fra 2a e 3a e la seconda fra 4a e 5a: restano distinte
+per costruzione, e si controlla *quanto* ciascuna può muoversi. Le tre domande —
+quante voci, dove sta ognuna, quanto può muoversi — sono indipendenti, e ora
+hanno tre controlli indipendenti.
+
+**Il gesto si prende solo se il dito parte vicino a una maniglia** o dentro una
+barra; altrove il tocco passa alla vista sotto, che lo usa per cambiare
+schermata. Prima il selettore agganciava il valore alla riga sfiorata, quindi un
+tocco di passaggio spostava un grado e uno scorrimento laterale cambiava
+l'armonia invece di cambiare vista — su un leggio, un parametro che cambia da
+solo.
+
+**L'unisono dentro l'intervallo viene saltato**: una voce all'unisono con la
+melodia è una voce che sparisce, e come esito di un tiro casuale suona come un
+buco. Resta solo se l'intervallo è esattamente l'unisono, che è una scelta
+esplicita. Nel selettore il grado saltato si vede, in grigio spento.
+
+Come i gradi diventano insiemi per il motore (§4.4):
+
+- **grado fisso** → ogni voce riceve un `degreeSet` di un solo elemento, il suo;
+- **gli altri modi** → ogni voce riceve l'insieme del **proprio** intervallo, e
+  ne pesca un grado per nota secondo il modo.
+
+L'insieme è comunque **ruotato per voce**. Serve quando due voci condividono lo
+stesso intervallo: col movimento minimo il primo candidato sarebbe lo stesso per
+entrambe — `set[size/2]` quando non c'è una nota precedente — e partirebbero
+all'unisono. Con la rotazione partono separate, e da lì il movimento minimo le
+tiene separate, perché ognuna minimizza il movimento rispetto alla *propria*
+nota precedente. Con intervalli disgiunti le voci non si incrociano affatto.
+
+### 14.3 Arpeggiatore
+
+Vale **tutta** l'architettura di prima. Cambia solo cosa esce: non le voci
+armonizzate a partire dalla melodia, ma un arpeggio che parte dalla nota
+suonata.
+
+**Segue l'armonia da solo.** L'arpeggio sale sulle note ammesse dal passo
+corrente della progressione — i chord tone, oppure tutta la scala se si vuole —
+e la nota suonata dice solo da dove partire (se è estranea, si aggancia alla più
+vicina). Non c'è una riga di logica sull'accordo: cambia il passo, cambiano le
+note.
+
+**Sta sulla griglia del transport, non sulla nota.** Quindi:
+`BATT. 1` riallinea anche l'arpeggio, `STOP` lo ferma, il tasto `FX` lo silenzia
+lasciando scorrere la progressione, il BPM è quello del brano. A transport fermo
+l'arpeggio **tace** — non c'è griglia — mentre la melodia passa comunque, come
+sempre (§6.3).
+
+| Parametro | Valori |
+|---|---|
+| **direzione** | su · giù · su-giù · giù-su · casuale |
+| **articolazione** | 1/4 · 1/8 · **terzine** · 1/16 · **quintine** · **sestine** · **settimine** · 1/32 · **terzine di 1/16** |
+| **estensione** | 1–4 ottave |
+| **note** | dell'accordo (arpeggio) · tutta la scala (scala corsa) |
+| **gate** | 10–100% dello step: è la durata della nota |
+| **swing** | 0–50%: ritardo degli step dispari |
+
+L'articolazione si esprime in **note per quarto**: 3 sono le terzine di ottavi,
+5 le quintine, 6 le sestine, 7 i gruppi di sette, 12 le terzine di sedicesimi.
+Il quarto è il movimento in qualsiasi tempo (§7.3.3), quindi la suddivisione non
+dipende da 3/4, 4/4 o 5/4.
+
+Su `su-giù` e `giù-su` **gli estremi non si ripetono**: su tre note fa
+`1-2-3-2`, non `1-2-3-3-2-1`.
+
+**Riattacco.** L'arpeggio manda il note-off **prima** del note-on successivo.
+Con `Legato Retrigger Interval = OFF` — che serve all'armonia per spostarsi
+senza riattaccare (§5) — due note sovrapposte cambierebbero solo l'intonazione:
+un arpeggio senza attacchi. Lo stesso parametro dà i due comportamenti opposti,
+e a scegliere è l'ordine dei messaggi.
+
+**Priorità all'ultima nota.** L'arpeggio parte dall'ultima nota ricevuta; al suo
+note-off passa a un'altra nota ancora tenuta, se c'è, altrimenti tace.
+
+### 14.4 Il clock
+
+L'armonizzatore si accontentava del tick dell'interfaccia a 40 ms: doveva solo
+accorgersi dei cambi di accordo. L'arpeggiatore no — a 120 bpm in sestine uno
+step dura 21 ms, e a 40 ms di risoluzione la sestina non esisterebbe.
+
+`Clock.kt` è quindi un thread proprio a `THREAD_PRIORITY_URGENT_AUDIO`, come
+quello del MIDI, che chiama `Harmonizer.tick()`. Il periodo si adatta:
+**2 ms** con l'arpeggiatore, **20 ms** con l'armonizzatore — cinquecento
+risvegli al secondo per stare a guardare la battuta sarebbero batteria buttata.
+Misurato sul telefono: 14% di un core con l'arpeggiatore, 3% con
+l'armonizzatore.
+
+Si pianifica su **tempi assoluti** e non a intervalli, altrimenti l'errore di
+ogni giro si sommerebbe; se si accumula ritardo non si rincorre, si riparte da
+ora — una pausa del sistema fa **saltare** gli step mancati, non sparare una
+raffica di recupero. Il `Runnable` è uno solo e si ripianifica da sé: nel
+percorso caldo non si allocano nemmeno i risvegli.
+
+### 14.5 Cosa è verificato
+
+`core/src/DemoFx.kt` è il banco degli effetti, su JVM senza strumento. Il tempo
+è un parametro e non l'orologio: le prove chiamano `tick()` agli istanti che
+vogliono, quindi si verificano in un istante cose che dal vivo richiederebbero
+minuti.
+
+Verificato: le voci multiple sui gradi scelti e il loro spostamento al cambio
+d'accordo conservando il grado; la rotazione dell'insieme che separa le voci;
+che ogni voce riceva il **proprio** intervallo e che due voci con fasce
+disgiunte non si sovrappongano mai in duecento attacchi casuali; che
+l'intervallo **non** dipenda dal numero di voci — una voce sola in modo casuale
+produce quattro note diverse su un intervallo di quattro gradi — e che l'unisono
+venga saltato dentro un intervallo più largo; le
+sestine (12 note in un secondo a 120 bpm) e lo swing al millisecondo; il
+riattacco con note-off prima del note-on e nessuna nota appesa; l'arpeggio che
+segue la progressione; il mute che silenzia lasciando scorrere; stop e
+riallineamento; il cambio di effetto a caldo senza note appese; un clock
+irregolare con jitter 0–4 ms che non perde uno step su sessanta; una pausa di
+sistema di 500 ms che produce **una** nota e non una raffica.
+
+**Non verificato**, perché richiede lo strumento: che il riattacco suoni come un
+riattacco, la latenza reale sul percorso USB, e quanto in alto si possa spingere
+l'articolazione prima che l'AE-20 o il telefono non stiano più dietro.

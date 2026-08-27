@@ -58,6 +58,21 @@ java -cp "out:$K/lib/kotlin-stdlib.jar" harmonizer.core.DemoScaleKt
 Altri banchi: `DemoKt` (verifiche musicali), `DemoEstraneeKt` (note fuori scala),
 `BenchKt` (costo per nota).
 
+Banco degli **effetti** — armonizzatore a più voci e arpeggiatore (doc §14).
+Serve anche `Fx.kt`, `Runtime.kt` e `Harmonizer.kt`, che di Android non sanno
+nulla:
+
+```bash
+cd ~/Downloads/aerofoni/harmonizer
+K="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc"
+java -cp "$K/lib/kotlin-compiler.jar" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler \
+  -nowarn -d outfx core/src/Harmony.kt core/src/Scales.kt core/src/DemoFx.kt \
+  android/app/src/main/java/harmonizer/app/Fx.kt \
+  android/app/src/main/java/harmonizer/app/Runtime.kt \
+  android/app/src/main/java/harmonizer/app/Harmonizer.kt
+java -cp "outfx:$K/lib/kotlin-stdlib.jar" harmonizer.app.DemoFxKt
+```
+
 ⚠️ `core/src/` e `android/app/src/main/java/harmonizer/core/` sono **due copie**
 dello stesso modulo. Modificando l'una, riallineare l'altra.
 
@@ -186,6 +201,23 @@ Non documentata da Roland. Suonare tenendo più note con tutte le voci attive e
 verificare a quante voci simultanee le note iniziano a essere tagliate. Impostare
 `VoiceTracker(maxNotes, maxVoices)` in `Harmonizer.kt` di conseguenza.
 
+Con la vista effetti il numero di voci si cambia dall'app (1–4), quindi la
+taratura è immediata: alzare le voci finché qualcosa si taglia.
+
+### Test 6 — arpeggiatore (non nel wizard, da fare a mano)
+
+Doc §14.3. Tre cose che solo lo strumento può dire:
+
+| Cosa | Come | Se va male |
+|---|---|---|
+| **il riattacco suona** | `fx` → `arpeggiator`, 1/8, `BATT. 1`, tenere una nota | se le note dell'arpeggio si legano senza attacco, allungare la pausa fra note-off e note-on: in `Harmonizer.tickArp` il note-off precede immediatamente il note-on, servirebbe qualche ms in mezzo — cioè anticipare lo spegnimento al tick prima |
+| **fino a dove si può spingere** | salire di articolazione: 1/16, sestine, settimine, 1/32 | se compaiono note mangiate o timing sporco, il limite è quello: annotarlo. Prima di dare la colpa all'app, guardare i µs nella riga di stato |
+| **il gate giusto** | provare 25%, 55%, 85% | col gate alto le code si sovrappongono e l'arpeggio impasta; col gate basso, con un tone a release lunga, non cambia niente |
+
+Se il **timing è irregolare** e non è l'articolazione: il clock sta a 2 ms
+(`Clock.kt`), quindi la colpa non è della risoluzione. Sospettare l'ottimizzazione
+batteria (doc §9.3) e il trasporto USB.
+
 ---
 
 ## 5. Invarianti da non rompere
@@ -211,6 +243,13 @@ li deve conoscere.
    manda anche il Release Value.
 8. **La voce conserva il proprio grado alla riaccordatura**, e se la nota
    risultante è invariata non si invia nulla.
+9. **L'arpeggio manda il note-off prima del note-on.** È l'unico modo di ottenere
+   un riattacco con `Legato Retrigger Interval = OFF`, che all'armonia serve
+   invece per spostarsi senza attaccare. Invertire l'ordine trasforma
+   l'arpeggio in un glissando.
+10. **Un effetto solo alla volta, entrambi memorizzati.** Due catene in serie
+    raddoppiano il lavoro sul percorso della nota; le configurazioni però
+    stanno tutte nel brano, e cambiare effetto non ne perde nessuna.
 
 ---
 
@@ -218,8 +257,15 @@ li deve conoscere.
 
 - `minDurationGate` e `breathGate` esistono in `HarmConfig` ma non hanno
   interfaccia: aggiungere due controlli in una schermata impostazioni.
-- Nessuna schermata per configurare le voci (gradi, registro, modo di selezione,
-  canale): oggi si cambiano solo nel codice, in `HarmConfig.voices`.
+- Nella vista effetti si configurano voci, modo e gradi; **registro**
+  (`voiceLow`/`voiceHigh`, oggi 48–96) e canali restano nel codice.
+- Nei modi non fissi ogni voce ha il proprio intervallo di gradi, quindi con
+  fasce disgiunte non si incrociano. Se invece si sovrappongono di proposito,
+  due voci possono capitare sullo stesso grado: ognuna decide da sé, non c'è
+  una scelta coordinata.
+- Il pulsante `test` e quello `fx` convivono nella riga di navigazione. Finiti i
+  test di connessione, togliere la voce `test` da `MainActivity.buildPrincipale`
+  e restano tre pulsanti come prima.
 - La scaletta non ha import/export: vive solo nelle preferenze del telefono.
 - Nella striscia qualità del selettore, `triade` viene prima di `7`: in contesto
   jazz converrebbe l'ordine inverso (`ChordPicker.qualitaDisponibili`).

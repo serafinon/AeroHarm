@@ -41,9 +41,11 @@ class MainActivity : Activity() {
     private val esiti = LinkedHashMap<String, String>()
     private var monitorAttivo = true
     private val righeLog = ArrayList<String>()
-    private var schermata = 0            // 0 principale, 1 progressione, 2 picker, 3 scaletta
+    // 0 principale, 1 progressione, 2 picker, 3 scaletta, 4 test, 5 effetti
+    private var schermata = 0
     private var branoAttivo = 0
     private var pickerDalCarosello = false
+    private lateinit var orologio: OrologioFx
 
     override fun onCreate(s: Bundle?) {
         super.onCreate(s)
@@ -54,6 +56,16 @@ class MainActivity : Activity() {
         midi.start()
         HarmService.start(this)
 
+        // il clock degli effetti sta su un thread proprio: l'arpeggiatore ha
+        // bisogno di una risoluzione che il tick dell'interfaccia non da'.
+        // All'armonizzatore basta accorgersi dei cambi di accordo, quindi la
+        // si dirada: e' inutile svegliarsi 500 volte al secondo per guardare
+        // la battuta.
+        orologio = OrologioFx(
+            { if (harm.config.fx == FxTipo.ARPEGGIATOR) 2L else 20L },
+            { now -> harm.tick(now) })
+        orologio.start()
+
         chiediPermessi()
 
         contenitore = FrameLayout(this).apply { setBackgroundColor(Pal.bg) }
@@ -63,6 +75,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        orologio.stop()
         try { harm.panic() } catch (_: Exception) {}
         midi.stop(); HarmService.stop(this)
         super.onDestroy()
@@ -93,6 +106,7 @@ class MainActivity : Activity() {
         harm.progression = b.progressione
         harm.transport.bpm = b.bpm
         harm.transport.beatsPerBar = b.battiti
+        harm.applicaFx(b.fx, b.harmCfg, b.arpCfg)
         if (richiamaScena) b.scena?.let {
             midi.selezionaScena(harm.config.leadChannel, ScenaAE20.MSB, it.lsb(), it.numero)
             logLine("Scena AE-20: ${it.etichetta()}")
@@ -107,6 +121,7 @@ class MainActivity : Activity() {
     override fun onBackPressed() {
         when (schermata) {
             3 -> scorriVerso(buildPrincipale(), daSinistra = false, nuovaSchermata = 0)
+            5 -> scorriVerso(buildPrincipale(), daSinistra = true, nuovaSchermata = 0)
             1, 4 -> mostraPrincipale()
             2 -> if (pickerDalCarosello) mostraPrincipale() else mostraProgressione()
             else -> super.onBackPressed()
@@ -135,7 +150,7 @@ class MainActivity : Activity() {
         return RadiceScorrevole(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Pal.bg)
-            verso = -1                      // si tira verso sinistra: la principale sta a destra
+            versi = intArrayOf(-1)          // si tira verso sinistra: la principale sta a destra
             sogliaY = 0f                    // qui vale su tutta la vista
             addView(interno, LinearLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
             onInizio = {
@@ -159,6 +174,44 @@ class MainActivity : Activity() {
             onCambia = { }
         }
         return v.build()
+    }
+
+    // ------------------------------------------------------------- effetti
+
+    private fun mostraFx() {
+        scorriVerso(costruisciFx(), daSinistra = false, nuovaSchermata = 5)
+    }
+
+    /**
+     * La vista degli effetti sta a destra della principale, speculare alla
+     * scaletta: da qui si torna trascinando verso destra.
+     */
+    private fun costruisciFx(): View {
+        val b = setlist.brani[branoAttivo]
+        val interno = FxView(this).apply {
+            tipo = b.fx
+            harmCfg = b.harmCfg
+            arpCfg = b.arpCfg
+            nomeBrano = b.nome
+            onCambia = {
+                b.fx = tipo
+                harm.applicaFx(b.fx, b.harmCfg, b.arpCfg)
+                setlist.salva(this@MainActivity)
+            }
+        }.build()
+
+        return RadiceScorrevole(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Pal.bg)
+            versi = intArrayOf(1)           // si tira verso destra: la principale sta a sinistra
+            sogliaY = 0f
+            addView(interno, LinearLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+            onInizio = {
+                preparaScorrimento(buildPrincipale(), daSinistra = true, destinazione = 0)
+            }
+            onTrascina = { dx -> trascinaScorrimento(dx) }
+            onRilascio = { dx, v -> rilasciaScorrimento(dx, v) }
+        }
     }
 
     private fun mostraProgressione() {
@@ -233,8 +286,12 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Pal.bg)
             setPadding(margine, (20 * d.density).toInt(), margine, margine)
-            verso = 1                       // si tira verso destra: la scaletta sta a sinistra
-            onInizio = { preparaScorrimento(costruisciScaletta(), daSinistra = true, destinazione = 3) }
+            // scaletta a sinistra (dito a destra), effetti a destra (dito a sinistra)
+            versi = intArrayOf(1, -1)
+            onInizio = { v ->
+                if (v > 0) preparaScorrimento(costruisciScaletta(), daSinistra = true, destinazione = 3)
+                else preparaScorrimento(costruisciFx(), daSinistra = false, destinazione = 5)
+            }
             onTrascina = { dx -> trascinaScorrimento(dx) }
             onRilascio = { dx, v -> rilasciaScorrimento(dx, v) }
         }
@@ -264,13 +321,15 @@ class MainActivity : Activity() {
             addView(testuale("progressione") { mostraProgressione() },
                 LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply { rightMargin = gap / 2 })
             addView(testuale("test") { mostraTest() },
+                LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply { rightMargin = gap / 2 })
+            addView(testuale("fx") { mostraFx() },
                 LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
         })
 
         // carosello degli accordi
         carosello = ChordCarousel(this).apply {
             onJump = { i ->
-                harm.transport.jumpToQuarto(System.nanoTime(), harm.progression.inizioDi(i))
+                harm.jump(System.nanoTime(), harm.progression.inizioDi(i))
             }
             onModifica = { i -> mostraPicker(i, dalCarosello = true) }
             onAggiungi = { mostraPicker(-1, dalCarosello = true) }
@@ -294,12 +353,12 @@ class MainActivity : Activity() {
         // due pulsanti quadrati, stessa riga
         btnArmonia = SymbolButton(this, SymbolButton.Sym.ARMONIA, "S1").apply {
             attivo = true
-            testoSotto = "ARMONIA"
+            testoSotto = "FX"
             onTap = { harm.setMuted(!harm.muted); aggiornaArmonia() }
         }
         val btnBatt = SymbolButton(this, SymbolButton.Sym.BATTUTA_1, "S2").apply {
             testoSotto = "BATT. 1"
-            onTap = { harm.transport.resync(System.nanoTime(), harm.config.resyncMode) }
+            onTap = { harm.resync(System.nanoTime()) }
         }
         root.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -464,7 +523,7 @@ class MainActivity : Activity() {
         val nuovo = SymbolButton(this,
             if (harm.muted) SymbolButton.Sym.ARMONIA_MUTA else SymbolButton.Sym.ARMONIA, "S1").apply {
             attivo = !harm.muted
-            testoSotto = if (harm.muted) "MUTA" else "ARMONIA"
+            testoSotto = if (harm.muted) "FX MUTO" else "FX"
             onTap = { harm.setMuted(!harm.muted); aggiornaArmonia() }
         }
         padre.removeViewAt(i); padre.addView(nuovo, i, lp)
@@ -503,7 +562,6 @@ class MainActivity : Activity() {
     private fun tickLoop() {
         ui.postDelayed({
             val now = System.nanoTime()
-            harm.tick(now)
             if (schermata == 0 && ::carosello.isInitialized) {
                 val steps = harm.progression.steps
                 val q = harm.transport.quarto(now)

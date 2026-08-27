@@ -90,7 +90,7 @@ class Transport(var beatsPerBar: Int = 4) {
 
     /** Un quarto = un movimento. Non dipende dal tempo: 3/4, 4/4 e 5/4
      *  hanno tutti il quarto come unita'. */
-    private fun nanosPerQuarto(): Double = 60.0 / bpm * 1_000_000_000.0
+    fun nanosPerQuarto(): Double = 60.0 / bpm * 1_000_000_000.0
 
     private fun nanosPerBar(): Double = nanosPerQuarto() * beatsPerBar
 
@@ -127,6 +127,15 @@ class Transport(var beatsPerBar: Int = 4) {
 
     /** Posizione in QUARTI di battuta. */
     fun quarto(now: Long): Int = if (running) absoluteBar(now) else barOffset
+
+    /**
+     * La stessa posizione con la frazione. Serve all'arpeggiatore, che deve
+     * sapere dove sta *dentro* il quarto: alla risoluzione del quarto una
+     * sestina non esisterebbe.
+     */
+    fun quartoDouble(now: Long): Double =
+        if (running) (now - originNanos).toDouble() / nanosPerQuarto() + barOffset
+        else barOffset.toDouble()
 
     fun bar(now: Long): Int = quarto(now) / beatsPerBar.coerceAtLeast(1)
 
@@ -214,6 +223,15 @@ class AllowedCache(scales: List<Scale> = Scales.ALL) {
 
     private val index = HashMap<String, Array<AllowedNotes>>(scales.size * 2)
 
+    /**
+     * Solo i chord tone, 12 fondamentali x le qualita'. Serve
+     * all'arpeggiatore: salire per gradi di scala darebbe una scala corsa,
+     * non un arpeggio.
+     */
+    private val accordi = Array(ChordQuality.values().size) { q ->
+        Array(12) { root -> AllowedNotes(Chord(root, ChordQuality.values()[q]).chordPitchClasses()) }
+    }
+
     init {
         for (sc in scales) {
             val perRoot = Array(12) { root ->
@@ -225,4 +243,7 @@ class AllowedCache(scales: List<Scale> = Scales.ALL) {
 
     fun get(root: Int, scale: Scale): AllowedNotes? =
         index[scale.id]?.get(pitchClass(root))
+
+    fun getAccordo(chord: Chord): AllowedNotes =
+        accordi[chord.quality.ordinal][pitchClass(chord.root)]
 }

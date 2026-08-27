@@ -31,7 +31,15 @@ data class Brano(
     var bpm: Double,
     var scena: ScenaAE20?,
     /** Movimenti per battuta: 3, 4 o 5. */
-    var battiti: Int = BATTITI_DEFAULT
+    var battiti: Int = BATTITI_DEFAULT,
+    /**
+     * L'effetto attivo e le configurazioni di **tutti** gli effetti: si
+     * memorizzano entrambe, anche quella dell'effetto spento, cosi'
+     * passare da uno all'altro non perde le regolazioni. Spec §14.
+     */
+    var fx: FxTipo = FxTipo.HARMONIZER,
+    var harmCfg: HarmonizerCfg = HarmonizerCfg(),
+    var arpCfg: ArpCfg = ArpCfg()
 )
 
 /** Scaletta con salvataggio nelle preferenze: niente librerie esterne. */
@@ -44,9 +52,10 @@ class Setlist(val brani: MutableList<Brano> = mutableListOf()) {
         fun carica(ctx: Context): Setlist {
             val s = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString(KEY, null)
             // v2: durate in quarti di battuta. I dati piu' vecchi si scartano.
-            // v4: nuova progressione predefinita. I dati piu' vecchi si scartano.
-            return if (s.isNullOrBlank() || !s.startsWith("v4\n")) predefinita()
-                   else deserializza(s.removePrefix("v4\n"))
+            // v4: nuova progressione predefinita.
+            // v5: configurazione degli effetti per brano.
+            return if (s.isNullOrBlank() || !s.startsWith("v5\n")) predefinita()
+                   else deserializza(s.removePrefix("v5\n"))
         }
 
         fun predefinita(): Setlist = Setlist(mutableListOf(
@@ -73,16 +82,69 @@ class Setlist(val brani: MutableList<Brano> = mutableListOf()) {
                             q[3].toInt()
                         )
                     }
+                    val fx = FxTipo.da(campi.getOrNull(5) ?: "h")
+                    val hc = leggiHarm(campi.getOrNull(6))
+                    val ac = leggiArp(campi.getOrNull(7))
                     if (passi.isNotEmpty())
-                        out.add(Brano(nome, Progression(nome, passi), bpm, scena, batt))
+                        out.add(Brano(nome, Progression(nome, passi), bpm, scena, batt, fx, hc, ac))
                 } catch (_: Exception) { }
             }
             return if (out.isEmpty()) predefinita() else Setlist(out)
         }
+
+        /**
+         * "voci,modo,g1..g4,minGlob,maxGlob,min1,max1,...,min4,max4"
+         *
+         * I due valori globali sono la vecchia forma, quando l'intervallo era
+         * uno per tutte le voci: se gli intervalli per voce non ci sono, si
+         * usano quelli per riempirli tutti, cosi' una configurazione salvata
+         * prima non si perde.
+         */
+        private fun leggiHarm(t: String?): HarmonizerCfg {
+            val c = HarmonizerCfg()
+            if (t.isNullOrBlank()) return c
+            try {
+                val q = t.split(",")
+                c.voci = q[0].toInt()
+                c.modo = SelectionMode.valueOf(q[1])
+                for (i in 0 until MAX_VOCI) q.getOrNull(2 + i)?.toIntOrNull()?.let { c.gradi[i] = it }
+                val globMin = q.getOrNull(2 + MAX_VOCI)?.toIntOrNull()
+                val globMax = q.getOrNull(3 + MAX_VOCI)?.toIntOrNull()
+                val perVoce = q.size >= 4 + MAX_VOCI + 2 * MAX_VOCI
+                for (i in 0 until MAX_VOCI) {
+                    if (perVoce) {
+                        q.getOrNull(4 + MAX_VOCI + 2 * i)?.toIntOrNull()?.let { c.gradiMin[i] = it }
+                        q.getOrNull(5 + MAX_VOCI + 2 * i)?.toIntOrNull()?.let { c.gradiMax[i] = it }
+                    } else {
+                        globMin?.let { c.gradiMin[i] = it }
+                        globMax?.let { c.gradiMax[i] = it }
+                    }
+                }
+            } catch (_: Exception) { }
+            c.normalizza()
+            return c
+        }
+
+        /** "pattern,notePerQuarto,ottave,gate,swing,soloAccordo" */
+        private fun leggiArp(t: String?): ArpCfg {
+            val c = ArpCfg()
+            if (t.isNullOrBlank()) return c
+            try {
+                val q = t.split(",")
+                c.pattern = ArpPattern.valueOf(q[0])
+                c.notePerQuarto = q[1].toInt()
+                c.ottave = q[2].toInt()
+                c.gate = q[3].toInt()
+                c.swing = q[4].toInt()
+                c.soloAccordo = q[5] == "1"
+            } catch (_: Exception) { }
+            c.normalizza()
+            return c
+        }
     }
 
     fun salva(ctx: Context) {
-        val sb = StringBuilder("v4\n")
+        val sb = StringBuilder("v5\n")
         for (b in brani) {
             sb.append(b.nome).append("¦").append(b.bpm).append("¦")
             b.scena?.let { sb.append(if (it.utente) "u" else "p").append(",")
@@ -92,6 +154,17 @@ class Setlist(val brani: MutableList<Brano> = mutableListOf()) {
                 sb.append(p.chord.root).append(",").append(p.chord.quality.name).append(",")
                     .append(p.scale.id).append(",").append(p.quarti).append(";")
             sb.append("\u00a6").append(b.battiti)
+            sb.append("\u00a6").append(b.fx.codice())
+            sb.append("\u00a6").append(b.harmCfg.voci).append(",").append(b.harmCfg.modo.name)
+            for (g in b.harmCfg.gradi) sb.append(",").append(g)
+            // i due globali restano per compatibilita': sono l'intervallo della voce 1
+            sb.append(",").append(b.harmCfg.estremoBasso(0)).append(",").append(b.harmCfg.estremoAlto(0))
+            for (i in 0 until MAX_VOCI)
+                sb.append(",").append(b.harmCfg.gradiMin[i]).append(",").append(b.harmCfg.gradiMax[i])
+            sb.append("\u00a6").append(b.arpCfg.pattern.name).append(",")
+                .append(b.arpCfg.notePerQuarto).append(",").append(b.arpCfg.ottave).append(",")
+                .append(b.arpCfg.gate).append(",").append(b.arpCfg.swing).append(",")
+                .append(if (b.arpCfg.soloAccordo) "1" else "0")
             sb.append("\n")
         }
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
@@ -177,6 +250,12 @@ class SetlistView(private val act: Activity, private val setlist: Setlist) {
             })
 
             card.addView(TextView(act).apply {
+                text = "%s · %s".format(b.fx.etichetta, descrizioneFx(b))
+                setTextColor(Pal.warn); textSize = 12f
+                setPadding(0, 10, 0, 0)
+            })
+
+            card.addView(TextView(act).apply {
                 text = "%.0f BPM · %s · %s battute · %s".format(
                     b.bpm, nomeTempo(b.battiti),
                     formattaQuarti(b.progressione.totalQuarti, b.battiti),
@@ -213,6 +292,25 @@ class SetlistView(private val act: Activity, private val setlist: Setlist) {
             contenitore.addView(card, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
                 .apply { bottomMargin = 14 })
         }
+    }
+
+    /** Sintesi dei parametri dell'effetto attivo, per la scheda del brano. */
+    private fun descrizioneFx(b: Brano): String = when (b.fx) {
+        FxTipo.HARMONIZER -> "%d %s · %s · %s".format(
+            b.harmCfg.voci,
+            if (b.harmCfg.voci == 1) "voce" else "voci",
+            nomeModo(b.harmCfg.modo),
+            if (b.harmCfg.modo == SelectionMode.FIXED)
+                b.harmCfg.gradiAttivi().joinToString(" ") { Degrees.name(it) }
+            // nomi brevi: "4a sotto-2a" si legge come una sottrazione
+            else (0 until b.harmCfg.voci).joinToString(" · ") { v ->
+                "${gradoBreve(b.harmCfg.estremoBasso(v))}…${gradoBreve(b.harmCfg.estremoAlto(v))}"
+            })
+        FxTipo.ARPEGGIATOR -> "%s · %s · %d ott.%s".format(
+            b.arpCfg.pattern.etichetta,
+            Suddivisioni.NOMI[Suddivisioni.indiceDi(b.arpCfg.notePerQuarto)],
+            b.arpCfg.ottave,
+            if (b.arpCfg.swing > 0) " · swing ${b.arpCfg.swing}%" else "")
     }
 
     private fun dialogoScena(b: Brano) {
