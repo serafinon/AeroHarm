@@ -505,6 +505,9 @@ class MainActivity : Activity() {
             addView(rigaRisposte)
             addView(LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
+                // stacco dalla riga delle risposte: attaccate, un tocco un po'
+                // basso su "SÌ" finiva su "avvia" e ricominciava la procedura
+                setPadding(0, (14 * d.density).toInt(), 0, 0)
                 addView(testuale("avvia") { avviaWizard() },
                     LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply { rightMargin = 12 })
                 addView(testuale("panic") { harm.panic() },

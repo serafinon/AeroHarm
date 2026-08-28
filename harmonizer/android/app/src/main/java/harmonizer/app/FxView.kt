@@ -71,7 +71,7 @@ class FxView(private val act: Activity) {
             text = nomeBrano
             setTextColor(Pal.acc); textSize = 13f; gravity = Gravity.CENTER
         })
-        root.addView(etichetta("EFFETTO — uno alla volta, entrambi memorizzati"))
+        root.addView(etichetta("EFFETTO — uno alla volta, tutti memorizzati"))
 
         val tipi = FxTipo.values()
         grigliaEffetti = Griglia(tipi.map { it.etichetta }, tipi.size, tipi.indexOf(tipo),
@@ -346,8 +346,8 @@ class FxView(private val act: Activity) {
         val prescrive = t.passoFisso > 0 || t.passoPrimo > 0
         lblTipoVoicing?.text = t.descrizione +
             "  Tipiche: ${t.vociTipiche} voci." +
-            (if (prescrive) " Questo tipo decide da se' la distanza fra le voci: " +
-                            "l'apertura conta poco." else "")
+            (if (prescrive) " La distanza fra le voci la decide il tipo; l'apertura " +
+                            "la apre o la chiude a partire da li'." else "")
     }
 
     private fun aggiornaPassaggio() {

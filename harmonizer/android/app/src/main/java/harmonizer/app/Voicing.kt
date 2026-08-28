@@ -168,7 +168,7 @@ enum class TipoVoicing(
     DROP2("drop 2", ammessi = listOf(1, 3, 5, 7), passoFisso = 3, drop = listOf(2),
         vociTipiche = 3,
         descrizione = "Close con la seconda voce dall'alto giu' di un'ottava. Il piu' " +
-            "usato di tutti: apre il centro e togli l'impasto del close."),
+            "usato di tutti: apre il centro e toglie l'impasto del close."),
 
     DROP3("drop 3", ammessi = listOf(1, 3, 5, 7), passoFisso = 3, drop = listOf(3),
         vociTipiche = 3,
