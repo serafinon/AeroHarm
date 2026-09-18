@@ -365,20 +365,20 @@ class FxView(private val act: Activity) {
         val t = voicingCfg.tipo
         voicingCfg.normalizza()
         grigliaVoci?.aggiorna(voicingCfg.voci - 1,
-            (0 until MAX_VOCI_VOICING).filterNot { it + 1 in t.vociMin..t.vociMax }.toSet())
-        grigliaApertura?.aggiorna(voicingCfg.apertura,
-            APERTURE.indices.filterNot { it in t.aperturaMin..t.aperturaMax }.toSet())
+            (0 until MAX_VOCI_VOICING).filterNot { it + 1 >= t.vociMin }.toSet())
+        // l'apertura resta libera: il tipo sceglie i gradi, l'apertura la distanza
+        grigliaApertura?.aggiorna(voicingCfg.apertura, emptySet())
     }
 
     private fun aggiornaTipoVoicing() {
         val t = voicingCfg.tipo
         val prescrive = t.passoFisso > 0 || t.passoPrimo > 0
-        val voci = if (t.vociMin == t.vociMax) "${t.vociMin} voci"
-                   else "${t.vociMin}-${t.vociMax} voci, tipiche ${t.vociTipiche}"
-        lblTipoVoicing?.text = t.descrizione + "  Regge $voci." +
+        val voci = if (t.vociMin > 1) "Da ${t.vociMin} voci in su, tipiche ${t.vociTipiche}"
+                   else "Tipiche ${t.vociTipiche} voci"
+        lblTipoVoicing?.text = t.descrizione + "  $voci: le altre raddoppiano " +
+            "la struttura un'ottava sotto." +
             (if (prescrive) " La distanza fra le voci la decide il tipo; l'apertura " +
-                            "la apre o la chiude a partire da li', fin dove il tipo " +
-                            "resta se stesso." else "")
+                            "la apre o la chiude a partire da li'." else "")
     }
 
     private fun aggiornaPassaggio() {

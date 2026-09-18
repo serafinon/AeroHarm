@@ -1018,8 +1018,9 @@ Tre conseguenze:
 - la spaziatura è **asimmetrica**: a pari errore vince il più stretto. Senza
   questa preferenza i pareggi si risolvevano a caso, e la quartal prendeva una
   quarta dove voleva una terza;
-- **costa 1,9 µs** per nota, misurato. L'armonizzatore sta a 0,1: venti volte
-  tanto, e sempre tre ordini di grandezza sotto il budget di un evento MIDI. Il
+- **costa 1,9 µs** per nota a quattro voci e 5 µs a otto, misurato.
+  L'armonizzatore sta a 0,1: sempre tre ordini di grandezza sotto il budget di
+  un evento MIDI. Il
   tempo di elaborazione è mostrato nella riga di stato, quindi si verifica
   invece di fidarsi.
 
@@ -1046,42 +1047,76 @@ semitoni di spostamento totale, con note tenute a ogni cambio.
 | parametro | valori |
 |---|---|
 | **tipo** | i quattordici di §15.2 |
-| **voci** | massimo e non numero fisso, entro quello che il tipo regge |
-| **apertura** | serrato · chiuso · medio · aperto · ampio, entro quello che il tipo regge |
+| **voci** | 1–8, massimo e non numero fisso |
+| **apertura** | serrato · chiuso · medio · aperto · ampio, libera su ogni tipo |
 | **registro** | nota più bassa concessa: C2 · F2 · A2 · C3 |
 | **note di passaggio** | tieni · rivoicing · planing · auto |
 | **soglia** | 60 · 120 · 250 · 500 ms — compare solo con «auto» |
 
-#### Il tipo comanda sugli altri parametri
+#### Il tipo comanda, ma solo dove ha qualcosa da dire
 
-Il tipo si sceglie per primo, e decide che valori gli altri possono prendere.
-Un drop 2 con una voce sola non è un drop; un cluster spalancato non è un
-cluster; un corale a sei voci non è un SATB. Erano combinazioni che si potevano
-selezionare e che producevano qualcosa che non era il voicing scelto.
+Il tipo si sceglie per primo e decide che valori gli altri possono prendere. Ma
+«incompatibile» significa due cose diverse, e confonderle porta a vietare
+combinazioni legittime — è successo, e la correzione vale la pena raccontarla.
 
-Ogni tipo dichiara quindi quante voci e quali aperture regge. Le scelte fuori
-intervallo si **spengono** nell'interfaccia, e `VoicingCfg.normalizza()` riporta
-dentro i valori — vale anche per una configurazione salvata con un tipo diverso,
-così non resta mai selezionata una scelta impossibile.
+**Sulle voci il vincolo è solo in basso.** Un `drop 3` ha bisogno che la terza
+posizione esista, quindi di almeno due voci generate: sotto, il nome promette
+uno spostamento d'ottava che non avviene. Un `drop 2+4` ne vuole tre. Tutto qui.
 
-| tipo | voci | apertura | perché |
-|---|---|---|---|
-| shell stretto / largo | 2–4 | tutte | `1+3` o `1+7` è già uno shell; oltre quattro non lo è più |
-| rootless A / B | 3–5 | tutte | la struttura è di quattro gradi; con tre resta `3-5-7`, con cinque si raddoppia sotto |
-| quartal | 2–6 | serrato–medio | il passo **è** la quarta: aprirlo oltre farebbe quinte |
-| close · close 5 ance | 3–4 | serrato–medio | è un voicing a quattro parti contando la tua, e i chord tone devono restare serrati |
-| drop 2 · drop 3 | 3–4 | serrato–chiuso | il close sotto il drop deve restare chiuso: ad aprire ci pensa il drop |
-| drop 2+4 | 3–5 | serrato–chiuso | idem, e servono almeno tre voci perché la quarta posizione esista |
-| spread | 3–5 | tutte | la struttura è di quattro; con tre resta `1-7-3` |
-| cluster | 2–5 | serrato–chiuso | sono seconde: aprirle non è più un cluster |
-| corale stretto / largo | 3 | tutte | SATB: tre voci sotto il soprano, né più né meno |
+In alto **non c'è tetto**, e il primo giro ce l'aveva: close fermo a quattro,
+corale fermo a tre. Era sbagliato, perché le voci in più non inventano gradi
+nuovi — **raddoppiano la struttura un'ottava sotto**, che è come si scrivono
+davvero i voicing grandi:
 
-L'**apertura neutra è sempre ammessa** da ogni tipo — è quella a cui ciascuno
-suona come da manuale — e il banco lo verifica per tutti e quattordici.
+```
+shell stretto  8 voci ->  E4 C4 Bb3 E3 C3 Bb2 E2      lo shell ripetuto per ottave
+close          8 voci ->  C5 Bb4 G4 E4 C4 Bb3 G3 E3
+corale stretto 8 voci ->  E4 C4 G3 E3 C3 G2 E2        la triade doppiata, come in orchestra
+```
+
+Un raddoppio d'ottava non è un raddoppio di volume: è un'altra nota, e l'ordine
+strettamente discendente della DP garantisce comunque che due voci non finiscano
+sulla stessa. Se non c'è posto ne suonano meno, come sempre.
+
+**Sull'apertura non c'è vincolo.** C'era, ed era l'errore gemello: i tipi il cui
+nome nomina una posizione — shell stretto/largo, corale stretto/largo, close,
+spread, cluster — vennero limitati all'estremo che il nome prometteva, con la
+giustificazione «se lo vuoi aperto c'è già shell largo».
+
+Falso: **shell largo non è shell stretto aperto**, è un altro *ordine dei gradi*,
+`1-7-3` invece di `1-3-7`. Sono tre cose diverse, e si vedono:
+
+```
+shell 1-3-7 serrato ->  Bb4 E4 C4      (12 semitoni sotto la lead)
+shell 1-3-7 ampio   ->  Bb3 E3 C3      (24)
+shell 1-7-3 ampio   ->  E4 Bb3 C3      un altro voicing ancora
+```
+
+Il terzo lo dà il tipo, i primi due li distingue solo l'apertura: vietarla
+toglieva un voicing invece di impedire un errore. **Il tipo sceglie i gradi e il
+loro ordine, l'apertura quanto stanno distanti** — due domande indipendenti, e
+restano indipendenti.
+
+| tipo | voci | apertura |
+|---|---|---|
+| tutti | 1–8 | tutte |
+| drop 3 | **2**–8 | tutte |
+| drop 2+4 | **3**–8 | tutte |
+
+Le voci sotto il minimo si **spengono** nell'interfaccia, e
+`VoicingCfg.normalizza()` riporta dentro i valori di una configurazione salvata
+prima.
+
+⚠️ Resta un'ambiguità **nei nomi**, non nel comportamento: «shell stretto» e
+«shell largo» si chiamano come una spaziatura ma differiscono per ordine dei
+gradi, e con l'apertura accanto la coppia si legge male. Chiamarli per quello
+che sono — l'ordine delle guide tone — toglierebbe la contraddizione. Non è
+stato fatto: è una decisione sui nomi, non sul motore.
 
 La **soglia** compare solo quando le note di passaggio sono su «auto»: negli
 altri tre modi non regola niente, e un controllo che non fa nulla è peggio di un
-controllo assente.
+controllo assente. È lo stesso criterio con cui si spengono i chip, applicato a
+un parametro intero.
 
 **L'apertura** è il passo bersaglio fra voci adiacenti, in semitoni. Dove il tipo
 prescrive la spaziatura — close, drop, quartal, cluster — non viene ignorata: si
@@ -1141,10 +1176,11 @@ che allarga davvero e in modo monotono; il movimento su un II-V-I; il fatto che 
 lead ferma sullo stesso accordo **nessuna nota cambi**; che senza posto suonino
 meno voci; e il costo per nota.
 
-Verifica anche i **vincoli fra parametri**: che ogni tipo dichiari intervalli
-coerenti col proprio tipico, che l'apertura neutra sia sempre ammessa, e che una
-configurazione impossibile — drop 2+4 con una voce, corale con sei — venga
-riportata dentro invece che accettata.
+Verifica anche i **vincoli fra parametri**: che il minimo di voci di ogni tipo
+basti al suo drop più profondo, che otto voci restino otto — in alto non c'è
+tetto — che alzando le voci compaiano raddoppi d'ottava della struttura e non
+classi estranee, sempre discendenti e senza ripetizioni, e che shell `1-3-7`
+serrato, `1-3-7` ampio e `1-7-3` ampio siano tre esiti distinti.
 
 **Manca**, e serve lo strumento: se il riattacco suoni come un riattacco, se
 `CC127` funzioni davvero, quante voci regga la polifonia, e come suonino i tipi

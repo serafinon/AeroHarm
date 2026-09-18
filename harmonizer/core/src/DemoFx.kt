@@ -383,10 +383,10 @@ fun main() {
     mostra(76, cm, VoicingCfg(TipoVoicing.CORALE_STRETTO, 3))
     mostra(76, cm, VoicingCfg(TipoVoicing.CORALE_LARGO, 3))
 
-    titolo("voicing: l'apertura apre, dentro i limiti del tipo")
+    titolo("voicing: l'apertura apre, su ogni tipo")
     val cfgAp = VoicingCfg(TipoVoicing.CLOSE, 3)
     var ampiezzaPrec = 0
-    for (a in TipoVoicing.CLOSE.aperturaMin..TipoVoicing.CLOSE.aperturaMax) {
+    for (a in APERTURE.indices) {
         cfgAp.apertura = a
         val o = mostra(72, c7, cfgAp)
         val amp = 72 - (o.filter { it >= 0 }.minOrNull() ?: 72)
@@ -394,32 +394,58 @@ fun main() {
         check(amp >= ampiezzaPrec) { "apertura piu' larga ma ampiezza minore" }
         ampiezzaPrec = amp
     }
-    check(ampiezzaPrec > 12) { "all'apertura massima ammessa il close deve aprirsi" }
+    check(ampiezzaPrec > 12) { "all'apertura massima il close deve spalancarsi" }
 
-    titolo("voicing: il tipo comanda sugli altri parametri")
-    // un drop 2 con una voce sola non e' un drop, un corale non e' SATB con sei
-    // voci: i valori impossibili si riportano dentro, non si accettano
+    titolo("voicing: le voci in piu' raddoppiano la struttura per ottave")
+    // nessun tetto alle voci: un raddoppio d'ottava non e' un raddoppio di
+    // volume, e i voicing grandi si scrivono cosi'
+    for (t in listOf(TipoVoicing.SHELL_STRETTO, TipoVoicing.CLOSE,
+                     TipoVoicing.CORALE_STRETTO)) {
+        val cfg = VoicingCfg(t, voci = 8, apertura = 0, registro = 0)
+        val o = mostra(76, c7, cfg)
+        val classi = o.filter { it >= 0 }.map { pitchClass(it) }.toSet()
+        val strutturali = if (t.struttura.isEmpty()) t.ammessi else t.struttura
+        check(o.size >= 6) { "${t.etichetta}: con 8 voci ne suonano solo ${o.size}" }
+        check(classi.size <= strutturali.size) {
+            "${t.etichetta}: sono comparse classi che il tipo non prevede"
+        }
+        // scendono e non si ripetono: l'ordine della DP lo garantisce
+        val vive = o.filter { it >= 0 }
+        for (i in 1 until vive.size) check(vive[i] < vive[i - 1]) { "non discendono" }
+    }
+
+    titolo("voicing: il tipo comanda dove ha qualcosa da dire")
+    // strutturale: un drop 3 senza la terza posizione non sposta niente
     val fuori = VoicingCfg(TipoVoicing.DROP24, voci = 1, apertura = 4)
     fuori.normalizza()
-    println("  drop 2+4 chiesto con 1 voce e apertura ampia -> " +
-            "${fuori.voci} voci, apertura ${NOMI_APERTURA[fuori.apertura]}")
+    println("  drop 2+4 chiesto con 1 voce -> ${fuori.voci} voci, " +
+            "apertura ${NOMI_APERTURA[fuori.apertura]} (l'apertura non si tocca)")
     check(fuori.voci == TipoVoicing.DROP24.vociMin)
-    check(fuori.apertura == TipoVoicing.DROP24.aperturaMax)
-    val corale = VoicingCfg(TipoVoicing.CORALE_STRETTO, voci = 6)
-    corale.normalizza()
-    println("  corale chiesto con 6 voci -> ${corale.voci} voci (SATB e' quello)")
-    check(corale.voci == 3)
-    // ogni tipo dichiara intervalli sensati e il tipico ci sta dentro
+    check(fuori.apertura == 4)
+    // l'apertura resta libera su ogni tipo: "shell largo" non e' "shell stretto
+    // aperto", e' un altro ordine dei gradi, quindi uno shell 1-3-7 spaziato
+    // largo e' un terzo voicing che va lasciato disponibile
+    val stretto = VoicingCfg(TipoVoicing.SHELL_STRETTO, apertura = 4)
+    stretto.normalizza()
+    check(stretto.apertura == 4) { "l'apertura non va limitata dal tipo" }
+    val s0 = mostra(72, c7, VoicingCfg(TipoVoicing.SHELL_STRETTO, 3, apertura = 0))
+    val s4 = mostra(72, c7, VoicingCfg(TipoVoicing.SHELL_STRETTO, 3, apertura = 4))
+    val l0 = mostra(72, c7, VoicingCfg(TipoVoicing.SHELL_LARGO, 3, apertura = 4))
+    check(s0.toList() != s4.toList()) { "aprire lo shell stretto non cambia niente" }
+    check(s4.toList() != l0.toList()) { "shell stretto aperto e shell largo coincidono" }
+    println("  shell 1-3-7 serrato, 1-3-7 ampio e 1-7-3 ampio sono tre voicing diversi")
+    // otto voci restano otto: in alto non c'e' tetto
+    val tante = VoicingCfg(TipoVoicing.CORALE_STRETTO, voci = 8)
+    tante.normalizza()
+    check(tante.voci == 8) { "non ci deve essere un tetto alle voci" }
     for (t in TipoVoicing.values()) {
-        check(t.vociMin in 1..t.vociMax) { "${t.etichetta}: intervallo voci assurdo" }
-        check(t.vociMax <= MAX_VOCI_VOICING) { "${t.etichetta}: oltre il massimo" }
-        check(t.vociTipiche in t.vociMin..t.vociMax) { "${t.etichetta}: il tipico e' fuori" }
-        check(t.aperturaMin in 0..t.aperturaMax && t.aperturaMax < APERTURE.size)
-        check(APERTURA_NEUTRA in t.aperturaMin..t.aperturaMax) {
-            "${t.etichetta}: l'apertura neutra deve essere sempre ammessa"
-        }
+        check(t.vociMin in 1..MAX_VOCI_VOICING) { "${t.etichetta}: minimo assurdo" }
+        check(t.vociTipiche >= t.vociMin) { "${t.etichetta}: il tipico e' sotto il minimo" }
+        // il minimo strutturale e' quello che serve al drop piu' profondo
+        val serve = (t.drop.maxOrNull() ?: 1) - 1
+        check(t.vociMin >= serve) { "${t.etichetta}: il drop non avrebbe posizione" }
     }
-    println("  tutti e ${TipoVoicing.values().size} i tipi dichiarano intervalli coerenti")
+    println("  tutti e ${TipoVoicing.values().size} i tipi dichiarano vincoli coerenti")
 
     titolo("voicing: le voci si muovono il meno possibile su un II-V-I")
     // la lead si muove come si muoverebbe davvero: A B C
@@ -466,7 +492,7 @@ fun main() {
     check(basso.size < 4) { "con la lead in basso non ci stanno quattro voci" }
 
     titolo("voicing: quanto costa")
-    val cfgB = VoicingCfg(TipoVoicing.DROP2, 4)
+    val cfgB = VoicingCfg(TipoVoicing.DROP2, 8)
     val precB = IntArray(MAX_VOCI_VOICING + 2) { -1 }
     voicer.costruisci(72, c7, cfgB, precB, -1)
     var t0 = System.nanoTime()

@@ -292,10 +292,15 @@ li deve conoscere.
 - Nella vista effetti si configurano voci, modo e gradi; il **registro
   dell'armonizzatore** (`voiceLow`/`voiceHigh`, oggi 48–96) e i canali restano
   nel codice. Il voicer ha il suo registro nell'interfaccia.
-- I vincoli fra tipo e altri parametri sono dichiarati nel catalogo
-  (`TipoVoicing.vociMin` e simili). Se provando dal vivo un intervallo risulta
-  troppo stretto o troppo largo, si cambia lì: l'interfaccia e la
-  normalizzazione lo seguono da sole.
+- L'unico vincolo fra tipo e altri parametri è `TipoVoicing.vociMin`, e serve ai
+  drop. Attenzione a non rimetterne altri per gusto: sono già stati tolti due
+  volte. Un tetto alle voci vieta i raddoppi d'ottava, che sono musica
+  legittima; un limite all'apertura vieta di spaziare un ordine di gradi che
+  nessun altro tipo offre (doc §15.4).
+- **I nomi dei tipi**: «shell stretto/largo» e «corale stretto/largo» si
+  chiamano come una spaziatura ma differiscono per ordine dei gradi. Accanto a
+  un parametro di apertura la coppia si legge male. Rinominarli per l'ordine
+  toglierebbe l'ambiguità — è una decisione da prendere, non un bug.
 - **Rootless auto**: alternare A e B scegliendo quella che si voice-leada
   meglio. Oggi la scelta è manuale, e con la lead sul grado alto la struttura è
   costretta un'ottava sotto (doc §15.6).
