@@ -292,6 +292,10 @@ li deve conoscere.
 - Nella vista effetti si configurano voci, modo e gradi; il **registro
   dell'armonizzatore** (`voiceLow`/`voiceHigh`, oggi 48–96) e i canali restano
   nel codice. Il voicer ha il suo registro nell'interfaccia.
+- I vincoli fra tipo e altri parametri sono dichiarati nel catalogo
+  (`TipoVoicing.vociMin` e simili). Se provando dal vivo un intervallo risulta
+  troppo stretto o troppo largo, si cambia lì: l'interfaccia e la
+  normalizzazione lo seguono da sole.
 - **Rootless auto**: alternare A e B scegliendo quella che si voice-leada
   meglio. Oggi la scelta è manuale, e con la lead sul grado alto la struttura è
   costretta un'ottava sotto (doc §15.6).

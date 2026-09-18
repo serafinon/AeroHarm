@@ -383,10 +383,10 @@ fun main() {
     mostra(76, cm, VoicingCfg(TipoVoicing.CORALE_STRETTO, 3))
     mostra(76, cm, VoicingCfg(TipoVoicing.CORALE_LARGO, 3))
 
-    titolo("voicing: l'apertura apre anche i tipi che prescrivono la spaziatura")
+    titolo("voicing: l'apertura apre, dentro i limiti del tipo")
     val cfgAp = VoicingCfg(TipoVoicing.CLOSE, 3)
     var ampiezzaPrec = 0
-    for (a in APERTURE.indices) {
+    for (a in TipoVoicing.CLOSE.aperturaMin..TipoVoicing.CLOSE.aperturaMax) {
         cfgAp.apertura = a
         val o = mostra(72, c7, cfgAp)
         val amp = 72 - (o.filter { it >= 0 }.minOrNull() ?: 72)
@@ -394,7 +394,32 @@ fun main() {
         check(amp >= ampiezzaPrec) { "apertura piu' larga ma ampiezza minore" }
         ampiezzaPrec = amp
     }
-    check(ampiezzaPrec > 12) { "su ampio il close deve spalancarsi" }
+    check(ampiezzaPrec > 12) { "all'apertura massima ammessa il close deve aprirsi" }
+
+    titolo("voicing: il tipo comanda sugli altri parametri")
+    // un drop 2 con una voce sola non e' un drop, un corale non e' SATB con sei
+    // voci: i valori impossibili si riportano dentro, non si accettano
+    val fuori = VoicingCfg(TipoVoicing.DROP24, voci = 1, apertura = 4)
+    fuori.normalizza()
+    println("  drop 2+4 chiesto con 1 voce e apertura ampia -> " +
+            "${fuori.voci} voci, apertura ${NOMI_APERTURA[fuori.apertura]}")
+    check(fuori.voci == TipoVoicing.DROP24.vociMin)
+    check(fuori.apertura == TipoVoicing.DROP24.aperturaMax)
+    val corale = VoicingCfg(TipoVoicing.CORALE_STRETTO, voci = 6)
+    corale.normalizza()
+    println("  corale chiesto con 6 voci -> ${corale.voci} voci (SATB e' quello)")
+    check(corale.voci == 3)
+    // ogni tipo dichiara intervalli sensati e il tipico ci sta dentro
+    for (t in TipoVoicing.values()) {
+        check(t.vociMin in 1..t.vociMax) { "${t.etichetta}: intervallo voci assurdo" }
+        check(t.vociMax <= MAX_VOCI_VOICING) { "${t.etichetta}: oltre il massimo" }
+        check(t.vociTipiche in t.vociMin..t.vociMax) { "${t.etichetta}: il tipico e' fuori" }
+        check(t.aperturaMin in 0..t.aperturaMax && t.aperturaMax < APERTURE.size)
+        check(APERTURA_NEUTRA in t.aperturaMin..t.aperturaMax) {
+            "${t.etichetta}: l'apertura neutra deve essere sempre ammessa"
+        }
+    }
+    println("  tutti e ${TipoVoicing.values().size} i tipi dichiarano intervalli coerenti")
 
     titolo("voicing: le voci si muovono il meno possibile su un II-V-I")
     // la lead si muove come si muoverebbe davvero: A B C
@@ -437,8 +462,8 @@ fun main() {
     println("  due volte la stessa lead sullo stesso accordo: nessuna nota cambia")
 
     titolo("voicing: senza posto suonano meno voci")
-    val basso = mostra(45, c7, VoicingCfg(TipoVoicing.CLOSE, 6))
-    check(basso.size < 6) { "con la lead in basso non ci stanno sei voci" }
+    val basso = mostra(45, c7, VoicingCfg(TipoVoicing.CLOSE, 4))
+    check(basso.size < 4) { "con la lead in basso non ci stanno quattro voci" }
 
     titolo("voicing: quanto costa")
     val cfgB = VoicingCfg(TipoVoicing.DROP2, 4)

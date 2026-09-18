@@ -56,6 +56,9 @@ class FxView(private val act: Activity) {
     // riferimenti del pannello voicing
     private var lblTipoVoicing: TextView? = null
     private var lblPassaggio: TextView? = null
+    private var grigliaVoci: Griglia? = null
+    private var grigliaApertura: Griglia? = null
+    private var bloccoSoglia: LinearLayout? = null
 
     private val d get() = act.resources.displayMetrics
 
@@ -95,6 +98,7 @@ class FxView(private val act: Activity) {
         pannello.removeAllViews()
         slitter = null; lblGradi = null; lblSpiegazione = null
         lblTipoVoicing = null; lblPassaggio = null
+        grigliaVoci = null; grigliaApertura = null; bloccoSoglia = null
         when (tipo) {
             FxTipo.HARMONIZER -> pannelloHarmonizer()
             FxTipo.ARPEGGIATOR -> pannelloArpeggiatore()
@@ -267,17 +271,14 @@ class FxView(private val act: Activity) {
         voicingCfg.normalizza()
         val col = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL }
 
-        col.addView(etichetta("VOCI — massimo, non un numero fisso. Tu sei la lead, sopra"))
-        col.addView(Griglia((1..MAX_VOCI_VOICING).map { "$it" }, 4, voicingCfg.voci - 1) { i ->
-            voicingCfg.voci = i + 1
-            onCambia?.invoke()
-        }.vista)
-
-        col.addView(etichetta("TIPO DI VOICING"))
+        // il tipo per primo: e' lui a decidere cosa gli altri parametri possono
+        // valere, quindi si sceglie prima e il resto si adatta
+        col.addView(etichetta("TIPO DI VOICING — decide gli altri parametri"))
         val tipi = TipoVoicing.values()
         col.addView(Griglia(tipi.map { it.etichetta }, 2,
             tipi.indexOf(voicingCfg.tipo)) { i ->
             voicingCfg.tipo = tipi[i]
+            aggiornaVincoli()
             aggiornaTipoVoicing()
             onCambia?.invoke()
         }.vista)
@@ -288,12 +289,20 @@ class FxView(private val act: Activity) {
         }
         col.addView(lblTipoVoicing)
 
+        col.addView(etichetta("VOCI — massimo, non un numero fisso. Tu sei la lead, sopra"))
+        grigliaVoci = Griglia((1..MAX_VOCI_VOICING).map { "$it" }, 4, voicingCfg.voci - 1) { i ->
+            voicingCfg.voci = i + 1
+            onCambia?.invoke()
+        }
+        col.addView(grigliaVoci!!.vista)
+
         col.addView(etichetta("APERTURA — distanza fra le voci"))
-        col.addView(Griglia(NOMI_APERTURA.toList(), 3, voicingCfg.apertura) { i ->
+        grigliaApertura = Griglia(NOMI_APERTURA.toList(), 3, voicingCfg.apertura) { i ->
             voicingCfg.apertura = i
             aggiornaTipoVoicing()
             onCambia?.invoke()
-        }.vista)
+        }
+        col.addView(grigliaApertura!!.vista)
 
         col.addView(etichetta("REGISTRO — nota piu' bassa concessa"))
         col.addView(Griglia(NOMI_REGISTRO.toList(), 4, voicingCfg.registro) { i ->
@@ -316,11 +325,16 @@ class FxView(private val act: Activity) {
         }
         col.addView(lblPassaggio)
 
-        col.addView(etichetta("SOGLIA — sotto tieni, sopra rivoicizza"))
-        col.addView(Griglia(SOGLIE_PASSAGGIO.map { "$it ms" }, 4, voicingCfg.soglia) { i ->
-            voicingCfg.soglia = i
-            onCambia?.invoke()
-        }.vista)
+        // la soglia esiste solo per il modo automatico: altrove non regola niente
+        bloccoSoglia = LinearLayout(act).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(etichetta("SOGLIA — sotto tieni, sopra rivoicizza"))
+            addView(Griglia(SOGLIE_PASSAGGIO.map { "$it ms" }, 4, voicingCfg.soglia) { i ->
+                voicingCfg.soglia = i
+                onCambia?.invoke()
+            }.vista)
+        }
+        col.addView(bloccoSoglia)
 
         col.addView(TextView(act).apply {
             text = "Le voci escono dai gradi dell'accordo previsti dal tipo, stanno " +
@@ -337,21 +351,41 @@ class FxView(private val act: Activity) {
             addView(col)
         }, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
 
+        aggiornaVincoli()
         aggiornaTipoVoicing()
         aggiornaPassaggio()
+    }
+
+    /**
+     * Spegne le scelte che il tipo selezionato non regge — un drop 2 con una
+     * voce sola non e' un drop, un cluster spalancato non e' un cluster — e
+     * riporta dentro i valori correnti se erano fuori.
+     */
+    private fun aggiornaVincoli() {
+        val t = voicingCfg.tipo
+        voicingCfg.normalizza()
+        grigliaVoci?.aggiorna(voicingCfg.voci - 1,
+            (0 until MAX_VOCI_VOICING).filterNot { it + 1 in t.vociMin..t.vociMax }.toSet())
+        grigliaApertura?.aggiorna(voicingCfg.apertura,
+            APERTURE.indices.filterNot { it in t.aperturaMin..t.aperturaMax }.toSet())
     }
 
     private fun aggiornaTipoVoicing() {
         val t = voicingCfg.tipo
         val prescrive = t.passoFisso > 0 || t.passoPrimo > 0
-        lblTipoVoicing?.text = t.descrizione +
-            "  Tipiche: ${t.vociTipiche} voci." +
+        val voci = if (t.vociMin == t.vociMax) "${t.vociMin} voci"
+                   else "${t.vociMin}-${t.vociMax} voci, tipiche ${t.vociTipiche}"
+        lblTipoVoicing?.text = t.descrizione + "  Regge $voci." +
             (if (prescrive) " La distanza fra le voci la decide il tipo; l'apertura " +
-                            "la apre o la chiude a partire da li'." else "")
+                            "la apre o la chiude a partire da li', fin dove il tipo " +
+                            "resta se stesso." else "")
     }
 
     private fun aggiornaPassaggio() {
         lblPassaggio?.text = voicingCfg.passaggio.descrizione
+        // la soglia regola solo il modo automatico
+        bloccoSoglia?.visibility =
+            if (voicingCfg.passaggio == ModoPassaggio.AUTO) View.VISIBLE else View.GONE
     }
 
     private fun indicePiuVicino(valori: IntArray, v: Int): Int {
@@ -386,6 +420,14 @@ class FxView(private val act: Activity) {
     ) {
         val vista: LinearLayout
         private val chip = ArrayList<TextView>(etichette.size)
+        private var spenti: Set<Int> = emptySet()
+
+        /** Cambia selezione e chip spenti senza ricostruire nulla. */
+        fun aggiorna(sel: Int, disabilitati: Set<Int>) {
+            selezionato = sel
+            spenti = disabilitati
+            for ((k, c) in chip.withIndex()) stile(c, k == selezionato, k in spenti)
+        }
 
         init {
             vista = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL }
@@ -419,22 +461,31 @@ class FxView(private val act: Activity) {
             typeface = Typeface.DEFAULT_BOLD
             val v = ((if (grande) 18 else 14) * d.density).toInt()
             setPadding(8, v, 8, v)
-            stile(this, idx == selezionato)
+            stile(this, idx == selezionato, false)
             setOnClickListener {
+                if (idx in spenti) return@setOnClickListener
                 if (selezionato != idx) {
                     selezionato = idx
-                    for ((k, c) in chip.withIndex()) stile(c, k == selezionato)
+                    for ((k, c) in chip.withIndex()) stile(c, k == selezionato, k in spenti)
                 }
                 onScegli(idx)
             }
         }
 
-        private fun stile(c: TextView, attivo: Boolean) {
-            c.setTextColor(if (attivo) Pal.bg else Pal.fg)
+        private fun stile(c: TextView, attivo: Boolean, spento: Boolean) {
+            c.setTextColor(when {
+                spento -> Pal.rule
+                attivo -> Pal.bg
+                else -> Pal.fg
+            })
             c.background = GradientDrawable().apply {
                 cornerRadius = 10f
-                setColor(if (attivo) Pal.acc else Pal.surf2)
-                if (!attivo) setStroke(2, Pal.rule)
+                setColor(when {
+                    spento -> Pal.surf
+                    attivo -> Pal.acc
+                    else -> Pal.surf2
+                })
+                if (!attivo && !spento) setStroke(2, Pal.rule)
             }
         }
     }

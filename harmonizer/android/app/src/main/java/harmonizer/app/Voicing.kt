@@ -88,6 +88,21 @@ object GradiAccordo {
         semitoni(grado, chord, scala)?.let { pitchClass(it + chord.root) }
 }
 
+/**
+ * Passo fra le voci, in semitoni. E' il parametro di apertura.
+ *
+ * Dove il tipo prescrive la spaziatura si somma come **scostamento** da
+ * [APERTURA_NEUTRA]: il tipo decide il carattere e l'apertura lo apre o lo
+ * chiude. Ma non all'infinito — ogni tipo dichiara fin dove puo' arrivare senza
+ * smettere di essere se stesso, e oltre quel punto l'apertura non e'
+ * selezionabile: vedi [TipoVoicing.aperturaMin].
+ */
+val APERTURE = intArrayOf(3, 4, 6, 8, 12)
+val NOMI_APERTURA = arrayOf("serrato", "chiuso", "medio", "aperto", "ampio")
+
+/** L'apertura a cui i tipi suonano come da manuale. */
+const val APERTURA_NEUTRA = 1
+
 // -------------------------------------------------------------- i tipi
 
 /** Da dove si scende, quando la struttura nasce dalla lead. */
@@ -107,6 +122,13 @@ enum class GrigliaVoicing { ACCORDO, SCALA }
  * four-way close sono la tua nota piu' tre voci, quindi `voci = 3`. Per questo
  * [drop] conta le posizioni includendo la lead, com'e' d'uso: `drop 2` sposta
  * la seconda voce dall'alto, cioe' la prima generata.
+ *
+ * **Il tipo ha la precedenza sugli altri parametri.** Ognuno dichiara quante
+ * voci e quali aperture ammette: fuori da quegli intervalli il voicing non e'
+ * piu' quello che dice il suo nome — un drop 2 con una voce sola non e' un
+ * drop, un cluster spalancato non e' un cluster — quindi le scelte impossibili
+ * si spengono nell'interfaccia e [VoicingCfg.normalizza] riporta dentro i
+ * valori di una configurazione salvata prima.
  */
 enum class TipoVoicing(
     val etichetta: String,
@@ -130,74 +152,94 @@ enum class TipoVoicing(
     /** Penalizza quinte e ottave parallele fra voci adiacenti: corale. */
     val evitaParallele: Boolean = false,
     val vociTipiche: Int = 3,
+    /** Voci generate ammesse: sotto o sopra, il tipo non regge. */
+    val vociMin: Int = 2,
+    val vociMax: Int = MAX_VOCI_VOICING,
+    /** Indici di [APERTURE] ammessi. */
+    val aperturaMin: Int = 0,
+    val aperturaMax: Int = 4,
     val descrizione: String = ""
 ) {
     SHELL_STRETTO("shell stretto", struttura = listOf(1, 3, 7), vociTipiche = 3,
+        vociMin = 2, vociMax = 4, aperturaMin = 0, aperturaMax = 4,
         descrizione = "Fondamentale e guide tone serrati. Due note dicono l'accordo: " +
             "il 3 e il 7 sono quelle che cambiano, il 5 non serve."),
 
     SHELL_LARGO("shell largo", struttura = listOf(1, 7, 3), vociTipiche = 3,
+        vociMin = 2, vociMax = 4, aperturaMin = 0, aperturaMax = 4,
         descrizione = "Lo stesso in posizione larga — fondamentale, settima, decima. " +
             "E' la mano sinistra di Bud Powell: lascia aria in mezzo."),
 
     ROOTLESS_A("rootless A", struttura = listOf(3, 5, 7, 9), quintaInTredicesima = true,
         vociTipiche = 4,
+        vociMin = 3, vociMax = 5, aperturaMin = 0, aperturaMax = 4,
         descrizione = "Senza fondamentale, dal basso 3-5-7-9. Sui dominanti il 5 " +
             "diventa 13. E' il comping di Bill Evans: la fondamentale la sente l'orecchio."),
 
     ROOTLESS_B("rootless B", struttura = listOf(7, 9, 3, 5), quintaInTredicesima = true,
         vociTipiche = 4,
+        vociMin = 3, vociMax = 5, aperturaMin = 0, aperturaMax = 4,
         descrizione = "La stessa in seconda posizione, dal basso 7-9-3-5. Si alterna " +
             "con la A per muovere poco: su un II-V-I una tiene le note dell'altra."),
 
     QUARTAL("quartal", ammessi = listOf(1, 9, 3, 11, 5, 13, 7), griglia = GrigliaVoicing.SCALA,
         passoPrimo = 4, passoFisso = 5, vociTipiche = 4,
+        vociMin = 2, vociMax = 6, aperturaMin = 0, aperturaMax = 2,
         descrizione = "Quarte impilate, terza in cima: il voicing di «So What». " +
             "Modale, sospeso, non dichiara la qualita' dell'accordo."),
 
     CLOSE("close (four-way)", ammessi = listOf(1, 3, 5, 7), passoFisso = 3, vociTipiche = 3,
+        vociMin = 3, vociMax = 4, aperturaMin = 0, aperturaMax = 2,
         descrizione = "I quattro chord tone serrati sotto la lead. E' la sezione " +
             "sax da big band: con 3 voci sono quattro parti contando la tua."),
 
     CLOSE_ANCE("close 5 ance", ammessi = listOf(1, 3, 5, 7), passoFisso = 3,
         raddoppiaLead = true, vociTipiche = 4,
+        vociMin = 3, vociMax = 4, aperturaMin = 0, aperturaMax = 2,
         descrizione = "Four-way close con la lead raddoppiata un'ottava sotto: la " +
             "scrittura a cinque delle cinque ance. Il raddoppio d'ottava non e' " +
             "un raddoppio di volume, e' un'altra nota."),
 
     DROP2("drop 2", ammessi = listOf(1, 3, 5, 7), passoFisso = 3, drop = listOf(2),
         vociTipiche = 3,
+        vociMin = 3, vociMax = 4, aperturaMin = 0, aperturaMax = 1,
         descrizione = "Close con la seconda voce dall'alto giu' di un'ottava. Il piu' " +
             "usato di tutti: apre il centro e toglie l'impasto del close."),
 
     DROP3("drop 3", ammessi = listOf(1, 3, 5, 7), passoFisso = 3, drop = listOf(3),
         vociTipiche = 3,
+        vociMin = 3, vociMax = 4, aperturaMin = 0, aperturaMax = 1,
         descrizione = "Come drop 2 ma cade la terza voce: piu' largo in basso, tiene " +
             "unite le due di sopra."),
 
     DROP24("drop 2+4", ammessi = listOf(1, 3, 5, 7), passoFisso = 3, drop = listOf(2, 4),
         vociTipiche = 3,
+        vociMin = 3, vociMax = 5, aperturaMin = 0, aperturaMax = 1,
         descrizione = "Due voci giu' di un'ottava. Il piu' aperto della famiglia: " +
             "tutti da big band, ottoni."),
 
     SPREAD("spread (ottoni)", struttura = listOf(1, 7, 3, 5), bassoProfondo = true,
         vociTipiche = 4,
+        vociMin = 3, vociMax = 5, aperturaMin = 0, aperturaMax = 4,
         descrizione = "Fondamentale in fondo, staccata, e il resto raccolto sotto la " +
             "lead: largo in basso e stretto in alto, come la serie armonica. " +
             "Il tutti degli ottoni."),
 
     CLUSTER("cluster (ance)", ammessi = listOf(1, 9, 3, 11, 5, 13, 7),
         griglia = GrigliaVoicing.SCALA, passoFisso = 2, vociTipiche = 3,
+        vociMin = 2, vociMax = 5, aperturaMin = 0, aperturaMax = 1,
         descrizione = "Seconde e terze di scala impilate sotto la lead. Denso, opaco: " +
             "le ance di Thad Jones e di Ellington."),
 
     CORALE_STRETTO("corale stretto", struttura = listOf(1, 3, 5), passoFisso = 3,
         evitaParallele = true, vociTipiche = 3,
+        vociMin = 3, vociMax = 3, aperturaMin = 0, aperturaMax = 4,
         descrizione = "Tre voci sotto la tua: SATB in posizione stretta, con te sul " +
             "soprano. Evita quinte e ottave parallele e tiene le note comuni."),
 
     CORALE_LARGO("corale largo", struttura = listOf(1, 5, 3), passoFisso = 5,
         evitaParallele = true, vociTipiche = 3,
+        vociMin = 3, vociMax = 3, aperturaMin = 0, aperturaMax = 4,
         descrizione = "Lo stesso in armonia aperta. Non e' la stessa cosa piu' larga: " +
             "e' un altro ordine dei gradi — 1-5-3 invece di 1-3-5 — e sono i gradi a " +
             "fare la posizione, perche' la spaziatura puo' solo saltare di ottave.");
@@ -226,20 +268,6 @@ enum class TipoVoicing(
     }
 }
 
-/**
- * Passo fra le voci, in semitoni. E' il parametro di apertura.
- *
- * Dove il tipo prescrive la spaziatura — close, drop, quartal, cluster —
- * l'apertura non viene ignorata: si somma come **scostamento** da
- * [APERTURA_NEUTRA], cosi' il tipo decide il carattere e l'apertura lo apre o
- * lo chiude. Un four-way close messo su "ampio" diventa un voicing spalancato
- * e resta un four-way close nei gradi.
- */
-val APERTURE = intArrayOf(3, 4, 6, 8, 12)
-val NOMI_APERTURA = arrayOf("serrato", "chiuso", "medio", "aperto", "ampio")
-
-/** L'apertura a cui i tipi suonano come da manuale. */
-const val APERTURA_NEUTRA = 1
 
 /** Nota piu' bassa concessa alle voci generate. */
 val REGISTRI = intArrayOf(36, 41, 45, 48)
@@ -275,9 +303,15 @@ data class VoicingCfg(
     /** Indice in [SOGLIE_PASSAGGIO], in millisecondi. */
     var soglia: Int = 1
 ) {
+    /**
+     * Il tipo comanda: voci e apertura si riportano dentro quello che quel
+     * voicing regge. Vale anche per una configurazione salvata con un tipo
+     * diverso, cosi' non resta mai una scelta impossibile.
+     */
     fun normalizza() {
-        voci = voci.coerceIn(1, MAX_VOCI_VOICING)
-        apertura = apertura.coerceIn(0, APERTURE.size - 1)
+        voci = voci.coerceIn(tipo.vociMin, tipo.vociMax).coerceIn(1, MAX_VOCI_VOICING)
+        apertura = apertura.coerceIn(tipo.aperturaMin, tipo.aperturaMax)
+            .coerceIn(0, APERTURE.size - 1)
         registro = registro.coerceIn(0, REGISTRI.size - 1)
         soglia = soglia.coerceIn(0, SOGLIE_PASSAGGIO.size - 1)
     }
