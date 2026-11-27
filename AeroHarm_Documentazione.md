@@ -64,8 +64,18 @@ Fonti: *AE-30/AE-20 MIDI Implementation v3.00 (7 marzo 2023)*,
 parametro `Rx Channel`: gli unici parametri "Rx" (`Rx Breath Controller`,
 `Rx Side Key (C1)`…) riguardano se il motore risponde ai **propri sensori**.
 
-**[DA VERIFICARE]** La corrispondenza canale → parte non è dichiarata. Ipotesi:
-canale *n* → parte *n*. Lo risolve il test 3 della procedura guidata.
+**Verificato il 27/11/2026 (test 3, prove dal Mac):** su una scena con le
+parti 1–5 accese, le note mandate sui canali **1, 2, 3 e 4 suonano**, quelle
+sul **canale 5 no**. Il canale 3 suona la parte 3: con la parte 3 spenta via
+SysEx il canale 3 tace, riaccesa suona. La corrispondenza canale *n* → parte *n*
+è verificata solo per la parte 3. Le parti 2 e 5 hanno gli stessi parametri,
+quindi il silenzio del canale 5 non dipende dalla parte 5. Indizio non
+verificato: la Parameter Address Map ha cinque «Scene Tone» per scena ma
+quattro «Temporary Tone PCM».
+
+**Il motore suona una nota ricevuta via MIDI solo dopo un valore di CC2**
+(test 2, 27/11/2026): nota nuda e nota preceduta da CC11 = 100 restano mute,
+nota preceduta da CC2 = 100 suona.
 
 ### 2.2 Control Change utili
 
@@ -74,6 +84,11 @@ canale *n* → parte *n*. Lo risolve il test 3 della procedura guidata.
 `CC68` Legato · `CC71–78` Resonance, Release, Attack, Cutoff, Decay, Vibrato
 Rate/Depth/Delay (relativi, `00–40–7F` = −64…0…+63) · `CC84` Portamento Control ·
 `CC91/93` Reverb/Chorus Send · `CC126/127` Mono/Poly.
+
+⚠️ **`CC126` funziona solo con valore 1** (verificato il 27/11/2026). La MIDI
+Implementation dichiara il valore «mono number» 0–16, ma con valore 0 l'AE-20
+lascia la parte com'è: il parametro `Mono/Poly` della parte, letto via SysEx,
+resta Poly. Con valore 1 passa a Mono. `CC127` (valore 0) mette in Poly.
 
 **RPN**: `00 00` Pitch Bend Sensitivity 0–24 semitoni · `00 02` Channel Coarse
 Tuning `10H–40H–70H` = −48…0…+48 semitoni → `Part Coarse Tune` · `7F 7F` null.
@@ -95,6 +110,9 @@ Nella tabella *Reset All Controllers* il documento dichiara
 at minimum»*. Suggerisce che l'espressione sia tenuta al minimo, cioè che **una
 nota iniettata resti muta finché non le si manda anche fiato o espressione**.
 È l'incognita che il test 2 della procedura guidata risolve in trenta secondi.
+
+**Esito 27/11/2026:** l'indizio era giusto, ma il controller che conta è
+**CC2 (Breath)**, non CC11: la nota suona solo se preceduta da CC2.
 
 ### 2.5 Legato senza retrigger
 
@@ -120,11 +138,18 @@ non prosciuga il telefono. Ma il telefono in host mode non si ricarica sulla
 stessa porta: per una serata lunga serve un hub USB-C alimentato.
 
 **Polifonia massima: non documentata.** Nessun documento dichiara il numero di
-voci: `maxVoices` è configurabile e va tarato provando.
+voci: `maxVoices` è configurabile e va tarato provando. Il 27/11/2026 sei note
+sulle parti 2–4, due per parte in poly, hanno suonato insieme; più di sei non
+è stato provato.
 
-**Editing delle scene**: solo con **Aerophone Pro Editor** (iOS/Android, via
+**Editing delle scene**: con **Aerophone Pro Editor** (iOS/Android, via
 Bluetooth). Il menu sullo strumento arriva a sistema, assign, MIDI e profondità
-d'effetto, non ai parametri di parte.
+d'effetto, non ai parametri di parte. **Anche via SysEx** (verificato il
+27/11/2026): il Mac ha letto e scritto i parametri di sistema e di scena con
+RQ1/DT1 Roland (device ID `10`, model ID `00 00 00 7D`), e ha salvato una scena
+in una scena utente copiandone i blocchi. Strumenti e indirizzi in
+`AeroHarm_Continuazione.md` §2.1. Il blocco «MIDI Control» della scena risponde
+con 45 byte (`2D`), non con i 46 (`2E`) della tabella.
 
 ---
 
@@ -568,7 +593,7 @@ sistema.
 | switch `MIDI CONTROL` | **ON** | abilita la trasmissione MIDI |
 | `MIDI Ctrl Sound` | **On** per i test, poi **Off** | vedi test 1 |
 | `MIDI Ctrl PC` / `MIDI Ctrl BS` | Off | evita cambi di scena involontari |
-| `Tx Channel` | **16** | fuori da 1–5: un eventuale rientro non triggera parti |
+| `Tx Channel` | **16** | fuori da 1–5: un eventuale rientro non triggera parti. **Non è nel menu**: è un parametro della scena (§10.2), indirizzo SysEx `01 00 60 00` della scena in uso |
 | `MIDI Speed` | 1 | latenza minima |
 | `MIDI Velocity` | Tongued | velocity espressiva |
 | `Hold Mode` | **Off** | altrimenti le note restano appese |
@@ -584,6 +609,12 @@ In `MENU ▸ MIDI`, strato MIDI degli Assign:
 
 In `MENU ▸ System`: `Asgn Src Breath`, `Bite`, `Lever`, `S1/S2` su **System**.
 
+⚠️ **Quando le impostazioni diventano effettive** (verificato il 27/11/2026):
+un valore cambiato nel menu vale solo **dopo l'uscita dal menu**; `Tx Channel`
+e lo spegnimento del suono con `MIDI Ctrl Sound = Off` valgono solo **dopo aver
+spento e riacceso lo switch `[MIDI CONTROL]`**. Dettagli in
+`AeroHarm_Continuazione.md` §3.1.
+
 ### 10.2 Scena, con Aerophone Pro Editor
 
 Per **ogni** scena usata dal vivo:
@@ -594,6 +625,13 @@ Per **ogni** scena usata dal vivo:
   `Unison Switch` **Off** · `Coarse`/`Fine Tune` 0
 - Sul tone delle parti di armonia: `Legato Retrigger Interval` **OFF**
 - Salvare come scena utente e annotarne banco e numero per la scaletta.
+- `Tx Channel` (blocco «MIDI Control Mode») a **16**.
+
+**Decisione di Nic, 27/11/2026:** la scena di prova è salvata nella **scena
+utente 101 (banco 03, posizione 1)**, scritta dal Mac via SysEx a partire dalla
+scena «Taking Lead»: `Tx Channel` 16, parti 2–5 accese, Mono, `Legato Switch`
+On, `Unison Switch` Off. Timbri e `Legato Retrigger Interval` non impostati.
+Dettagli in `AeroHarm_Continuazione.md` §3.2.
 
 ---
 
@@ -616,6 +654,13 @@ sì/no e ricava da sola la configurazione. Sette passi:
 
 Alla fine l'app stampa nel monitor la configurazione ricavata.
 
+**Prove del 27/11/2026**, fatte dal Mac con gli stessi messaggi
+(`AeroHarm_Continuazione.md` §4.0): test 1b sì, test 2 solo con CC2, test 3
+canali 1–4 sì e canale 5 no, test 4 non deciso. Due difetti della procedura
+guidata emersi dalle prove, **non ancora corretti**: le prove dei test 3 e 4
+mandano CC11 e non CC2 prima delle note, quindi con questo strumento non
+suonano; e la procedura considera tutti e cinque i canali.
+
 ---
 
 ## 12. Stato e cosa manca
@@ -628,6 +673,13 @@ persistenza; servizio in primo piano; procedura guidata.
 
 **Manca**: tutto ciò che richiede l'Aerophone in mano — cioè la verifica delle
 quattro incognite, la taratura di `maxVoices`, e la scelta fra legato e bend.
+
+Il 27/11/2026 le prove dal Mac hanno chiuso il test 1 (topologia valida), il
+test 2 (serve CC2) e il test 3 (canali 1–4). Restano aperti: il test 4 (legato
+o bend), la polifonia oltre sei note, la prova dell'app sul telefono con lo
+strumento, e le modifiche al codice che gli esiti richiedono (mirror di CC2 in
+`HarmConfig`, voci di armonia sui soli canali 2–4, `CC126` con valore 1). Le
+modifiche al codice aspettano una decisione di Nic.
 
 **Non implementato per scelta**: pilotaggio SysEx dell'armonia nativa (§1),
 `minDurationGate` e `breathGate` esistono nella configurazione ma non hanno
